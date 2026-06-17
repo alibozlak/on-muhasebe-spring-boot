@@ -23,12 +23,8 @@ public class CreateUserRequestDto {
     @Email
     private String email;
 
-    @NotNull
-    @NotBlank
     private Boolean isActive;
 
-    @NotNull
-    @NotBlank
     private Boolean isAdmin;
 
     private String extraInformation;
