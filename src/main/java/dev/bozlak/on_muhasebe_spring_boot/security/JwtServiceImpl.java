@@ -78,4 +78,10 @@ public class JwtServiceImpl implements JwtService {
         Claims claims = this.extractClaims(jwtToken);
         return claims.get("adminId", Short.class);
     }
+
+    @Override
+    public Integer getUserIdFromToken(String jwtToken) {
+        Claims claims = this.extractClaims(jwtToken);
+        return claims.get("userId", Integer.class);
+    }
 }

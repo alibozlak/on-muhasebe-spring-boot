@@ -10,4 +10,5 @@ public interface JwtService {
     Boolean isTokenValid(String jwtToken, UserDetails userDetails);
     String getUserNameFromToken(String jwtToken);
     Short getAdminIdFromToken(String jwtToken);
+    Integer getUserIdFromToken(String jwtToken);
 }

@@ -3,12 +3,14 @@ package dev.bozlak.on_muhasebe_spring_boot.user.service;
 import dev.bozlak.on_muhasebe_spring_boot.admin.Admin;
 import dev.bozlak.on_muhasebe_spring_boot.user.User;
 import dev.bozlak.on_muhasebe_spring_boot.user.dtos.CreateUserRequestDto;
+import dev.bozlak.on_muhasebe_spring_boot.user.dtos.UserIdAndIsAdminModel;
 import dev.bozlak.on_muhasebe_spring_boot.user.repository.UserRepository;
 import dev.bozlak.on_muhasebe_spring_boot.user.service.logging.AddAdminActivityModel;
 import dev.bozlak.on_muhasebe_spring_boot.user.service.logging.AdminActivityService;
 import dev.bozlak.on_muhasebe_spring_boot.user.service.logging.AdminActivityType;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -43,5 +45,11 @@ public class UserServiceImpl implements UserService {
     @Override
     public Optional<User> getUserByUsername(String username) {
         return this.userRepository.findByUserName(username);
+    }
+
+    @Override
+    public UserIdAndIsAdminModel getModelForJwtTokenGenerated(String username) {
+        return this.userRepository.getModelForJwtTokenGenerated(username)
+                .orElseThrow(() -> new UsernameNotFoundException(username));
     }
 }

@@ -50,6 +50,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Short adminId = this.jwtService.getAdminIdFromToken(jwtToken);
                 if (adminId != null)
                     request.setAttribute("adminId", adminId);
+                Integer userId = this.jwtService.getUserIdFromToken(jwtToken);
+                if (userId != null)
+                    request.setAttribute("userId", userId);
             }
         }
 

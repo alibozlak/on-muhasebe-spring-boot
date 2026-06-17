@@ -1,6 +1,7 @@
 package dev.bozlak.on_muhasebe_spring_boot.user.repository;
 
 import dev.bozlak.on_muhasebe_spring_boot.user.User;
+import dev.bozlak.on_muhasebe_spring_boot.user.dtos.UserIdAndIsAdminModel;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -20,5 +21,10 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public Optional<User> findByUserName(String username) {
         return this.jpaUserRepository.findByUsername(username);
+    }
+
+    @Override
+    public Optional<UserIdAndIsAdminModel> getModelForJwtTokenGenerated(String username) {
+        return this.jpaUserRepository.getModelForJwtTokenGenerated(username);
     }
 }
