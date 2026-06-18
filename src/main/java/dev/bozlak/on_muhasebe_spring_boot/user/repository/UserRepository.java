@@ -10,4 +10,6 @@ public interface UserRepository {
     Integer createUser(User user);
     Optional<User> findByUserName(String username);
     Optional<UserIdAndIsAdminModel> getModelForJwtTokenGenerated(String username);
+    String getHashedPasswordByUserId(Integer userId);
+    void changePasswordByUserId(Integer userId, String newHashedPassword);
 }

@@ -1,14 +1,18 @@
 package dev.bozlak.on_muhasebe_spring_boot.utils;
 
 import dev.bozlak.core.responses.ResponseBodyWithMessage;
+import dev.bozlak.on_muhasebe_spring_boot.user.exceptions.PasswordIncorrectException;
+import dev.bozlak.on_muhasebe_spring_boot.user.exceptions.UserIdNotFoundException;
 import dev.bozlak.on_muhasebe_spring_boot.user.exceptions.UsernameNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.stream.Collectors;
 
@@ -40,8 +44,54 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(UserIdNotFoundException.class)
+    public ResponseEntity<ResponseBodyWithMessage> handleUserIdNotFoundException(
+            UserIdNotFoundException e
+    ) {
+        log.warn("Threw UserIdNotFoundException : " + e.getMessage());
 
+        return new ResponseEntity<>(
+                new ResponseBodyWithMessage(false, e.getMessage()),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @ExceptionHandler(PasswordIncorrectException.class)
+    public ResponseEntity<ResponseBodyWithMessage> handlePasswordIncorrectException(
+            PasswordIncorrectException e
+    ) {
+        log.warn("Threw PasswordIncorrectException : " + e.getMessage());
+
+        return new ResponseEntity<>(
+                new ResponseBodyWithMessage(false, e.getMessage()),
+                HttpStatus.FORBIDDEN
+        );
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ResponseBodyWithMessage> handleBadCredentialsException(BadCredentialsException e){
+        log.warn("Threw BadCredentialsException : " + e.getMessage());
+
+        return new ResponseEntity<>(
+                new ResponseBodyWithMessage(false, e.getMessage()),
+                HttpStatus.UNAUTHORIZED
+        );
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ResponseBodyWithMessage> handleNoResourceFoundException(NoResourceFoundException e){
+        log.warn("Threw NoResourceFoundException : " + e.getMessage());
+
+        return new ResponseEntity<>(
+                new ResponseBodyWithMessage(false, e.getMessage()),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+
+    /* ----------------------------------------------------------- */
     /* --------------------- OTHER EXCEPTIONS -------------------- */
+    /* ----------------------------------------------------------- */
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ResponseBodyWithMessage> handleGeneralExceptions(Exception exception){

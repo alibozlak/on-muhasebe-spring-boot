@@ -2,6 +2,7 @@ package dev.bozlak.on_muhasebe_spring_boot.user.api.v1;
 
 import dev.bozlak.core.responses.ResponseBody;
 import dev.bozlak.core.responses.ResponseBodyWithMessage;
+import dev.bozlak.on_muhasebe_spring_boot.user.dtos.ChangePasswordRequestDto;
 import dev.bozlak.on_muhasebe_spring_boot.user.dtos.CreateUserRequestDto;
 import dev.bozlak.on_muhasebe_spring_boot.user.service.UserService;
 import jakarta.validation.Valid;
@@ -34,4 +35,19 @@ public class UserController {
                 HttpStatus.CREATED
         );
     }
+
+    @PutMapping("/change-password")
+    public ResponseEntity<ResponseBody> changePassword(
+            @Valid @RequestBody ChangePasswordRequestDto changePasswordRequestDto,
+            @RequestAttribute(name = "userId") Integer userId
+    ) {
+        this.userService.changePassword(changePasswordRequestDto, userId);
+        return new ResponseEntity<>(
+                new ResponseBody(true),
+                HttpStatus.OK
+        );
+    }
+
+
+
 }
