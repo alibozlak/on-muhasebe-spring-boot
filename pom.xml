@@ -20,7 +20,11 @@
 		<license/>
 	</licenses>
 	<developers>
-		<developer/>
+		<developer>
+			<name>Ali İhsan Bozlak</name>
+			<email>bozlak.dev@gmail.com</email>
+			<url>https://bozlak.dev</url>
+		</developer>
 	</developers>
 	<scm>
 		<connection/>

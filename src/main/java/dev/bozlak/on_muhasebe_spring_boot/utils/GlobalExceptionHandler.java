@@ -1,6 +1,7 @@
 package dev.bozlak.on_muhasebe_spring_boot.utils;
 
 import dev.bozlak.core.responses.ResponseBodyWithMessage;
+import dev.bozlak.on_muhasebe_spring_boot.account.exceptions.CashAmountValueCantBeNegativeException;
 import dev.bozlak.on_muhasebe_spring_boot.user.exceptions.PasswordIncorrectException;
 import dev.bozlak.on_muhasebe_spring_boot.user.exceptions.UserIdNotFoundException;
 import dev.bozlak.on_muhasebe_spring_boot.user.exceptions.UsernameNotFoundException;
@@ -81,6 +82,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ResponseBodyWithMessage> handleNoResourceFoundException(NoResourceFoundException e){
         log.warn("Threw NoResourceFoundException : " + e.getMessage());
+
+        return new ResponseEntity<>(
+                new ResponseBodyWithMessage(false, e.getMessage()),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @ExceptionHandler(CashAmountValueCantBeNegativeException.class)
+    public ResponseEntity<ResponseBodyWithMessage> handleCashAmountValueCantBeNegativeException(
+            CashAmountValueCantBeNegativeException e
+    ) {
+        log.warn(
+                String.format("Threw CashAmountValueCantBeNegativeException : %s", e.getMessage())
+        );
 
         return new ResponseEntity<>(
                 new ResponseBodyWithMessage(false, e.getMessage()),
