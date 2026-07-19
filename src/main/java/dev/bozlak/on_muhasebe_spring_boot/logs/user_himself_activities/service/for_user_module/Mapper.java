@@ -1,6 +1,6 @@
-package dev.bozlak.on_muhasebe_spring_boot.logs.user_activities.service.for_user_module;
+package dev.bozlak.on_muhasebe_spring_boot.logs.user_himself_activities.service.for_user_module;
 
-import dev.bozlak.on_muhasebe_spring_boot.logs.user_activities.dtos.AddUserActivityModel;
+import dev.bozlak.on_muhasebe_spring_boot.logs.user_himself_activities.dtos.AddUserActivityModel;
 import org.mapstruct.MappingConstants;
 
 @org.mapstruct.Mapper(componentModel = MappingConstants.ComponentModel.SPRING)

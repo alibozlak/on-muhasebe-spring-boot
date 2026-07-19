@@ -38,4 +38,7 @@ public class Account {
     @Column(name = "amount")
     private BigDecimal amount;
 
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive;
+
 }

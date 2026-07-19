@@ -15,6 +15,7 @@ public class AccountRepositoryImpl implements AccountRepository {
     @Override
     public Long createAccount(CreateAccountRequestModel createAccountRequestModel) {
         Account account = this.accountMapperForRepository.toEntityFromItsCreateModel(createAccountRequestModel);
+        account.setIsActive(true);
 
         return this.jpaAccountRepository.save(account).getAccountId();
     }

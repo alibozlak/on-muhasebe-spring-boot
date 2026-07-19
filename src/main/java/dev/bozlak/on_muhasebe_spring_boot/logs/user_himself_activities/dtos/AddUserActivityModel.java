@@ -1,4 +1,4 @@
-package dev.bozlak.on_muhasebe_spring_boot.logs.user_activities.dtos;
+package dev.bozlak.on_muhasebe_spring_boot.logs.user_himself_activities.dtos;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

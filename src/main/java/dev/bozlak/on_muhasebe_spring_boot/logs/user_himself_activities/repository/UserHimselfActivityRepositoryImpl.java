@@ -1,7 +1,7 @@
-package dev.bozlak.on_muhasebe_spring_boot.logs.user_activities.repository;
+package dev.bozlak.on_muhasebe_spring_boot.logs.user_himself_activities.repository;
 
-import dev.bozlak.on_muhasebe_spring_boot.logs.user_activities.UserHimselfActivity;
-import dev.bozlak.on_muhasebe_spring_boot.logs.user_activities.dtos.AddUserActivityModel;
+import dev.bozlak.on_muhasebe_spring_boot.logs.user_himself_activities.UserHimselfActivity;
+import dev.bozlak.on_muhasebe_spring_boot.logs.user_himself_activities.dtos.AddUserActivityModel;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

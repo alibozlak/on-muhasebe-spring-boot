@@ -2,6 +2,7 @@ package dev.bozlak.on_muhasebe_spring_boot.utils;
 
 import dev.bozlak.core.responses.ResponseBodyWithMessage;
 import dev.bozlak.on_muhasebe_spring_boot.account.exceptions.CashAmountValueCantBeNegativeException;
+import dev.bozlak.on_muhasebe_spring_boot.account.exceptions.UserAccountDidNotCreateException;
 import dev.bozlak.on_muhasebe_spring_boot.user.exceptions.PasswordIncorrectException;
 import dev.bozlak.on_muhasebe_spring_boot.user.exceptions.UserIdNotFoundException;
 import dev.bozlak.on_muhasebe_spring_boot.user.exceptions.UsernameNotFoundException;
@@ -26,7 +27,7 @@ public class GlobalExceptionHandler {
         String errorMessage = ex.getBindingResult().getFieldErrors().stream()
                 .map(FieldError::getDefaultMessage).collect(Collectors.joining(", "));
 
-        log.warn("Threw validation exception(s) : " + errorMessage);
+        log.warn("Threw validation exception(s) : {}", errorMessage);
 
         return new ResponseEntity<>(
                 new ResponseBodyWithMessage(false, errorMessage),
@@ -37,7 +38,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UsernameNotFoundException.class)
     public ResponseEntity<ResponseBodyWithMessage> handleUserNotFoundException(UsernameNotFoundException e){
 
-        log.warn("Threw UserNotFoundException : ", e.getMessage());
+        log.warn("Threw UserNotFoundException : {}", e.getMessage());
 
         return new ResponseEntity<>(
                 new ResponseBodyWithMessage(false, e.getMessage()),
@@ -49,7 +50,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ResponseBodyWithMessage> handleUserIdNotFoundException(
             UserIdNotFoundException e
     ) {
-        log.warn("Threw UserIdNotFoundException : " + e.getMessage());
+        log.warn("Threw UserIdNotFoundException : {}", e.getMessage());
 
         return new ResponseEntity<>(
                 new ResponseBodyWithMessage(false, e.getMessage()),
@@ -61,7 +62,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ResponseBodyWithMessage> handlePasswordIncorrectException(
             PasswordIncorrectException e
     ) {
-        log.warn("Threw PasswordIncorrectException : " + e.getMessage());
+        log.warn("Threw PasswordIncorrectException : {}", e.getMessage());
 
         return new ResponseEntity<>(
                 new ResponseBodyWithMessage(false, e.getMessage()),
@@ -71,7 +72,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ResponseBodyWithMessage> handleBadCredentialsException(BadCredentialsException e){
-        log.warn("Threw BadCredentialsException : " + e.getMessage());
+        log.warn("Threw BadCredentialsException : {}", e.getMessage());
 
         return new ResponseEntity<>(
                 new ResponseBodyWithMessage(false, e.getMessage()),
@@ -81,7 +82,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ResponseBodyWithMessage> handleNoResourceFoundException(NoResourceFoundException e){
-        log.warn("Threw NoResourceFoundException : " + e.getMessage());
+        log.warn("Threw NoResourceFoundException : {} ", e.getMessage());
 
         return new ResponseEntity<>(
                 new ResponseBodyWithMessage(false, e.getMessage()),
@@ -93,9 +94,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ResponseBodyWithMessage> handleCashAmountValueCantBeNegativeException(
             CashAmountValueCantBeNegativeException e
     ) {
-        log.warn(
-                String.format("Threw CashAmountValueCantBeNegativeException : %s", e.getMessage())
-        );
+        log.warn("Threw CashAmountValueCantBeNegativeException : {}", e.getMessage());
 
         return new ResponseEntity<>(
                 new ResponseBodyWithMessage(false, e.getMessage()),
@@ -103,15 +102,30 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(UserAccountDidNotCreateException.class)
+    public ResponseEntity<ResponseBodyWithMessage> handleUserAccountDidNotCreateException(
+            UserAccountDidNotCreateException e
+    ) {
+        log.error("Threw UserAccountDidNotCreateException : {}", e.getMessage());
+
+        return new ResponseEntity<>(
+                new ResponseBodyWithMessage(
+                        false,
+                        "Unexpected Backend Error!! User account didn't create!"
+                ),
+                HttpStatus.INTERNAL_SERVER_ERROR
+        );
+    }
+
 
     /* ----------------------------------------------------------- */
-    /* --------------------- OTHER EXCEPTIONS -------------------- */
+    /* ---------------- LOGGING OR OTHER EXCEPTIONS -------------- */
     /* ----------------------------------------------------------- */
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ResponseBodyWithMessage> handleGeneralExceptions(Exception exception){
 
-        log.error("Unexpected system error : ", exception);
+        log.error("Unexpected system error : {}", exception.getMessage());
 
         return new ResponseEntity<>(
                 new ResponseBodyWithMessage(false, exception.getMessage()),

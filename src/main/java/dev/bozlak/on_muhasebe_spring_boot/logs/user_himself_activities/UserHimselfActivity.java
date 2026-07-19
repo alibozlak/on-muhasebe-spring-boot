@@ -1,4 +1,4 @@
-package dev.bozlak.on_muhasebe_spring_boot.logs.user_activities;
+package dev.bozlak.on_muhasebe_spring_boot.logs.user_himself_activities;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
