@@ -7,10 +7,7 @@ import dev.bozlak.on_muhasebe_spring_boot.account.service.AccountService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestAttribute;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/accounts")
@@ -19,6 +16,7 @@ public class AccountController {
 
     private final AccountService accountService;
 
+    @PostMapping("/create-account")
     public ResponseEntity<ResponseBody> createAccount(
             @Valid @RequestBody CreateAccountRequestDto createAccountRequestDto,
             @RequestAttribute(name = "userId") Integer userId
