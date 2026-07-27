@@ -66,7 +66,7 @@ public class ProductOrServiceControllerIntegrationTest extends BaseIntegrationTe
                     assertThat(productOrService.saleUnitPrice).isEqualByComparingTo("1500.50");
                     assertThat(productOrService.purchaseUnitPrice).isEqualByComparingTo("1200.25");
                     assertThat(productOrService.extraInformation).isEqualTo("Türkçe Q klavye");
-                    assertThat(productOrService.productOrServiceCode).isNotNull();
+                    assertThat(productOrService.productOrServiceCode).isEqualTo(1L);
                     assertThat(productOrService.didDelete).isFalse();
                     assertThat(productOrService.inventory).isNull();
                     assertThat(productOrService.createdAt).isBeforeOrEqualTo(LocalDate.now());
@@ -158,13 +158,17 @@ public class ProductOrServiceControllerIntegrationTest extends BaseIntegrationTe
                 .hasSize(2)
                 .allSatisfy(productOrService -> {
                     assertThat(productOrService.userId).isEqualTo(userId);
-                    assertThat(productOrService.productOrServiceCode).isNotNull();
                     assertThat(productOrService.didDelete).isFalse();
                 })
                 .extracting(productOrService -> productOrService.productOrServiceName)
                 .containsExactlyInAnyOrder("Monitör", "Kablosuz mouse");
 
-        // assert 2: Each of them has exactly one create log
+        // assert 2: The same user's product or service codes go one by one
+        assertThat(productOrServices)
+                .extracting(productOrService -> productOrService.productOrServiceCode)
+                .containsExactlyInAnyOrder(1L, 2L);
+
+        // assert 3: Each of them has exactly one create log
         assertThat(this.jpaProductOrServiceCreateOrDeleteActivityRepository.findAll())
                 .hasSize(2)
                 .allSatisfy(log -> assertThat(log.isActivityCreate).isTrue())
