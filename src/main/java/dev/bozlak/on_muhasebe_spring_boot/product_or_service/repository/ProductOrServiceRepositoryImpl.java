@@ -25,6 +25,7 @@ public class ProductOrServiceRepositoryImpl implements ProductOrServiceRepositor
         productOrService.productOrServiceCode = this.jpaProductOrServiceRepository
                 .getLastProductOrServiceCode(userId)
                 .orElse(0L);
+        productOrService.productOrServiceCode ++;
 
         return this.jpaProductOrServiceRepository.save(productOrService).productOrServiceId;
     }
