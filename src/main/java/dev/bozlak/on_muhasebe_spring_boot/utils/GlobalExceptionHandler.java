@@ -3,6 +3,8 @@ package dev.bozlak.on_muhasebe_spring_boot.utils;
 import dev.bozlak.core.responses.ResponseBodyWithMessage;
 import dev.bozlak.on_muhasebe_spring_boot.account.exceptions.CashAmountValueCantBeNegativeException;
 import dev.bozlak.on_muhasebe_spring_boot.account.exceptions.UserAccountDidNotCreateException;
+import dev.bozlak.on_muhasebe_spring_boot.product_or_service.exceptions.PurchaseUnitPriceCantBeNegativeException;
+import dev.bozlak.on_muhasebe_spring_boot.product_or_service.exceptions.UnitPriceCantBeNegativeException;
 import dev.bozlak.on_muhasebe_spring_boot.user.exceptions.PasswordIncorrectException;
 import dev.bozlak.on_muhasebe_spring_boot.user.exceptions.UserIdNotFoundException;
 import dev.bozlak.on_muhasebe_spring_boot.user.exceptions.UsernameNotFoundException;
@@ -94,7 +96,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ResponseBodyWithMessage> handleCashAmountValueCantBeNegativeException(
             CashAmountValueCantBeNegativeException e
     ) {
-        log.warn("Threw CashAmountValueCantBeNegativeException : {}", e.getMessage());
+        log.info("Threw CashAmountValueCantBeNegativeException : {}", e.getMessage());
 
         return new ResponseEntity<>(
                 new ResponseBodyWithMessage(false, e.getMessage()),
@@ -114,6 +116,22 @@ public class GlobalExceptionHandler {
                         "Unexpected Backend Error!! User account didn't create!"
                 ),
                 HttpStatus.INTERNAL_SERVER_ERROR
+        );
+    }
+
+    @ExceptionHandler(UnitPriceCantBeNegativeException.class)
+    public ResponseEntity<ResponseBodyWithMessage> handlePriceCantBeNegativeException(
+            UnitPriceCantBeNegativeException e
+    ) {
+        String messageVariable = (e instanceof PurchaseUnitPriceCantBeNegativeException) ?
+                "PurchaseUnitPriceCantBeNegativeException" :
+                "SaleUnitPriceCantBeNegativeException";
+
+        log.info("Threw {} : {}", messageVariable, e.getMessage());
+
+        return new ResponseEntity<>(
+                new ResponseBodyWithMessage(false, e.getMessage()),
+                HttpStatus.BAD_REQUEST
         );
     }
 

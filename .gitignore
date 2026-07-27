@@ -37,3 +37,6 @@ build/
 
 ### javadoc.txt ###
 javadoc.txt
+
+### Initial Hash Password Generator Class ###
+/src/main/java/dev/bozlak/InitialAdminHashPasswordGenerator.java
