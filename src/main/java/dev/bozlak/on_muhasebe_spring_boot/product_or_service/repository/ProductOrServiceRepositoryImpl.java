@@ -18,6 +18,7 @@ public class ProductOrServiceRepositoryImpl implements ProductOrServiceRepositor
     ) {
         ProductOrService productOrService =
                 this.productOrServiceRepositoryMapper.toEntityFromItsCreateDto(createProductOrServiceRequestDto);
+        productOrService.userId = userId;
         productOrService.createdAt = java.time.LocalDate.now();
         productOrService.didDelete = false;
         productOrService.inventory = null;
