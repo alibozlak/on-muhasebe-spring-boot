@@ -8,4 +8,6 @@ public interface UserActivityService {
             AddUserAccountCreateOrDeleteActivityModel addUserAccountCreateOrDeleteActivityModel
     );
 
+    void addProductOrServiceCreateOrDeleteActivity(Long productOrServiceId);
+
 }

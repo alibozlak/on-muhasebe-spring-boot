@@ -1,6 +1,9 @@
 package dev.bozlak.on_muhasebe_spring_boot.logs.user_activities.services;
 
 import dev.bozlak.on_muhasebe_spring_boot.logs
+        .user_activities.module_without_service
+        .product_or_service.create_or_delete_activity.ProductOrServiceCreateOrDeleteActivityRepository;
+import dev.bozlak.on_muhasebe_spring_boot.logs
         .user_activities
         .module_without_service
         .user_account
@@ -19,6 +22,7 @@ import org.springframework.stereotype.Service;
 public class UserActivityServiceImpl implements UserActivityService {
 
     private final UserAccountCreateOrDeleteActivityRepository userAccountCreateOrDeleteActivityRepository;
+    private final ProductOrServiceCreateOrDeleteActivityRepository productOrServiceCreateOrDeleteActivityRepository;
 
     @Override
     public void addUserAccountCreateOrDeleteActivityService(
@@ -27,5 +31,10 @@ public class UserActivityServiceImpl implements UserActivityService {
         this.userAccountCreateOrDeleteActivityRepository.addUserAccountCreateOrDeleteActivity(
                 addUserAccountCreateOrDeleteActivityModel
         );
+    }
+
+    @Override
+    public void addProductOrServiceCreateOrDeleteActivity(Long productOrServiceId) {
+        this.productOrServiceCreateOrDeleteActivityRepository.add(productOrServiceId);
     }
 }
