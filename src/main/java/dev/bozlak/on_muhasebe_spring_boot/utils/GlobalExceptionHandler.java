@@ -3,6 +3,8 @@ package dev.bozlak.on_muhasebe_spring_boot.utils;
 import dev.bozlak.core.responses.ResponseBodyWithMessage;
 import dev.bozlak.on_muhasebe_spring_boot.account.exceptions.CashAmountValueCantBeNegativeException;
 import dev.bozlak.on_muhasebe_spring_boot.account.exceptions.UserAccountDidNotCreateException;
+import dev.bozlak.on_muhasebe_spring_boot.contact.contact_type.exceptions.ContactTypeNameMustNotBlankException;
+import dev.bozlak.on_muhasebe_spring_boot.contact.contact_type.exceptions.RequiredBeAdminForCreateContactTypeException;
 import dev.bozlak.on_muhasebe_spring_boot.product_or_service.exceptions.PurchaseUnitPriceCantBeNegativeException;
 import dev.bozlak.on_muhasebe_spring_boot.product_or_service.exceptions.UnitPriceCantBeNegativeException;
 import dev.bozlak.on_muhasebe_spring_boot.user.exceptions.PasswordIncorrectException;
@@ -132,6 +134,32 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(
                 new ResponseBodyWithMessage(false, e.getMessage()),
                 HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @ExceptionHandler(ContactTypeNameMustNotBlankException.class)
+    public ResponseEntity<ResponseBodyWithMessage> handleContactNameMustNotBlankException(
+            ContactTypeNameMustNotBlankException contactTypeNameMustNotBlankException
+    ){
+        log.info("Threw ContactTypeMustNotBlankException : {}", contactTypeNameMustNotBlankException.getMessage());
+
+        return new ResponseEntity<>(
+                new ResponseBodyWithMessage(false, contactTypeNameMustNotBlankException.getMessage()),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @ExceptionHandler(RequiredBeAdminForCreateContactTypeException.class)
+    public ResponseEntity<ResponseBodyWithMessage> handleRequiredBeAdminForCreateContactTypeException(
+            RequiredBeAdminForCreateContactTypeException requiredBeAdminForCreateContactTypeException
+    ) {
+        log.info("Threw RequiredBeAdminForCreateContactTypeException : {}",
+                requiredBeAdminForCreateContactTypeException.getMessage()
+        );
+
+        return new ResponseEntity<>(
+                new ResponseBodyWithMessage(false, requiredBeAdminForCreateContactTypeException.getMessage()),
+                HttpStatus.FORBIDDEN
         );
     }
 
