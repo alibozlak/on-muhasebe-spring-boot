@@ -7,7 +7,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
-public interface AdminActivityMapper {
+public interface AdminActivityAboutUserMapper {
 
     @Mapping(target = "admin.adminId", source = "adminId")
     @Mapping(target = "user.userId", source = "userId")
