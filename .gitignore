@@ -40,3 +40,6 @@ javadoc.txt
 
 ### Initial Hash Password Generator Class ###
 /src/main/java/dev/bozlak/InitialAdminHashPasswordGenerator.java
+
+### Docker Compose Support - Test DB directory ###
+db_pre-accounting/

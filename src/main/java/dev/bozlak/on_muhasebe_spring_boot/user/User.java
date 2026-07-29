@@ -40,9 +40,11 @@ public class User {
     @Column(name = "created_at", nullable = false)
     private LocalDate createdAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "who_created_admin_id", nullable = false)
-    private Admin whoCreatedAdmin;
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "who_created_admin_id", nullable = false)
+//    private Admin whoCreatedAdmin;
+    @Column(name = "who_created_admin_id", nullable = false)    // <--- For users_initial.sql
+    private Short whoCreatedAdminId;
 
     @Column(name = "extra_information")
     private String extraInformation;
