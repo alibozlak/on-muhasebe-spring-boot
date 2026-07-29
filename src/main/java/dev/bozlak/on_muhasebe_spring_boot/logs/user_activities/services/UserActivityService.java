@@ -10,4 +10,6 @@ public interface UserActivityService {
 
     void addProductOrServiceCreateOrDeleteActivity(Long productOrServiceId);
 
+    void addContactCreateOrDeleteActivity(Long contactId);
+
 }
