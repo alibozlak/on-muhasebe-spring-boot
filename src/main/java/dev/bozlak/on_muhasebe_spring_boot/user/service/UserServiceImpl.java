@@ -34,7 +34,7 @@ public class UserServiceImpl implements UserService {
         String hashedPassword = this.passwordEncoder.encode(createUserRequestDto.getPassword());
         user.setHashedPassword(hashedPassword);
         user.setCreatedAt(LocalDate.now());
-        user.setWhoCreatedAdmin(new Admin(adminId, null, null, null));
+        user.setWhoCreatedAdminId(adminId);
         Integer createdUserId = this.userRepository.createUser(user);
 
         AddAdminActivityModel addAdminActivityModel = new AddAdminActivityModel(
