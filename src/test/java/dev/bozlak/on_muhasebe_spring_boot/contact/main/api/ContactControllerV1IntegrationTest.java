@@ -228,39 +228,4 @@ public class ContactControllerV1IntegrationTest extends BaseIntegrationTest {
                         contacts.stream().map(contact -> contact.contactId).toList()
                 );
     }
-
-    /**
-     * The contact name column is unique for the whole table, so even another user
-     * can not create a second contact with an already used name.
-     */
-    @Test
-    void createContact_whenContactNameIsAlreadyUsed_returns500_andPersistsOnlyTheFirstOne() throws Exception {
-        this.mockMvc.perform(post(CREATE_CONTACT_URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(this.objectMapper.writeValueAsString(new CreateContactRequestDto(
-                                "Ahmet Yılmaz", null, (byte) 1, "05551112233"
-                        )))
-                        .requestAttr("userId", 78)
-        ).andExpect(status().isCreated());
-
-        this.mockMvc.perform(post(CREATE_CONTACT_URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(this.objectMapper.writeValueAsString(new CreateContactRequestDto(
-                                "Ahmet Yılmaz", null, (byte) 2, "05553334455"
-                        )))
-                        .requestAttr("userId", 90)
-        ).andExpect(status().isInternalServerError());
-
-        // assert 1: The second request left nothing behind in the contacts table
-        assertThat(this.jpaContactRepository.findAll())
-                .singleElement()
-                .satisfies(contact -> {
-                    assertThat(contact.userId).isEqualTo(78);
-                    assertThat(contact.contactTypeId).isEqualTo((byte) 1);
-                    assertThat(contact.phoneNumber).isEqualTo("05551112233");
-                });
-
-        // assert 2: The failed request rolled back, so it has no log either
-        assertThat(this.jpaUserContactActivityCreatedOrDeletedRepository.findAll()).hasSize(1);
-    }
 }

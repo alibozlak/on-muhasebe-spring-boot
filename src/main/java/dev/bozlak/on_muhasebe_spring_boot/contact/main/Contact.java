@@ -14,7 +14,7 @@ public class Contact {
     @Column(name = "user_id", nullable = false)     // <----- FK
     public Integer userId;
 
-    @Column(name = "contact_name", nullable = false, unique = true)
+    @Column(name = "contact_name", nullable = false)
     public String contactName;
 
     @Column(name = "extra_information", nullable = true)
