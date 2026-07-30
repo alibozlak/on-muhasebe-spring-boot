@@ -1,1 +1,298 @@
--
+===============================================================================
+ main2_instructions — TEST FAZI (modül dağıtıcı)
+===============================================================================
+Buraya main_instructions_v2.txt Adım 5b'den gelinir. Buradaki zincir bitince
+main_instructions_v2.txt Adım 6'ya dönülür. Başka bir yere dallanma.
+
+Bu dosya, benim daha önce ELLE yaptığım işin otomatik karşılığıdır:
+  - Swagger UI'dan endpoint'i çağırmak  ->  curl
+  - DBeaver'dan tabloya bakıp kayıt oluşmuş mu diye kontrol etmek  ->  docker exec ... psql
+Yani her testin iki ayağı vardır ve İKİSİ de zorunludur: (1) HTTP cevabı, (2) veritabanı
+doğrulaması. Sadece HTTP 201 gördün diye "geçti" deme; ilgili tabloda satır oluşmuş mu,
+log tablosuna kayıt düşmüş mü kontrol et.
+
+TEMEL KURALLAR
+- main_instructions_v2.txt'teki TEMEL KURALLAR + İZİNLER burada da aynen geçerlidir.
+- [ON_ERROR] ve [CLEANUP] blokları main_instructions_v2.txt'tedir; burada YENİDEN
+  TANIMLANMAZ, oradaki bloklar kullanılır.
+- [ON_ERROR] içindeki "HATA ADIMI" alanını şu formatta doldur:
+      main2 / <modül dosyası veya T-adımı> / <adım no>
+  Örnek: "main2 / user_instructions.txt / USER.3"
+- Testleri KENDİN UYDURMA. Bir modül dosyası yoksa veya boşsa -> [ON_ERROR].
+- Uygulama bu faz boyunca AYAKTA kalır. Bu fazda uygulamayı kapatma, container'ı silme,
+  veritabanını sıfırlama. Kapatma işi [CLEANUP]'ın işidir.
+
+
+-------------------------------------------------------------------------------
+T0. ÖN KOŞULLAR (bu fazın ilk adımı)
+-------------------------------------------------------------------------------
+T0a. Uygulama HTTP olarak cevap veriyor mu:
+  wsl -e bash -lc 'curl -s -o /dev/null -w "HTTP:%{http_code}\n" http://localhost:8080/v3/api-docs'
+Beklenen: HTTP:200  (bu yol SecurityConfig'te permitAll, token istemez)
+Başka bir kod veya bağlantı hatası -> [ON_ERROR].
+
+T0b. Veritabanı başlangıç durumu:
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT (SELECT count(*) FROM users), (SELECT count(*) FROM admins), (SELECT count(*) FROM contact_types), (SELECT count(*) FROM contacts), (SELECT count(*) FROM accounts), (SELECT count(*) FROM product_or_services);"'
+Beklenen: 1|1|0|0|0|0
+(main_instructions_v2 Adım 4'ten gelen tek user + tek admin; geri kalan tablolar boş.)
+Farklıysa -> [ON_ERROR]: modüllerin varsaydığı ID'ler tutmaz.
+
+T0c. Bu fazın kendi çıktı dosyalarını temizle:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && rm -f target/jwt_admin.token target/jwt_user.token target/last_response.json target/login_admin.json target/login_user.json target/test_results.txt; echo TEST_TEMIZLIK_TAMAM'
+Beklenen: TEST_TEMIZLIK_TAMAM
+(target/run.log ve target/app.pid'e DOKUNMA; onlar uygulamanın canlı dosyaları.)
+
+
+-------------------------------------------------------------------------------
+T1. ORTAK SABİTLER VE KALIPLAR (bütün modüller bunları kullanır)
+-------------------------------------------------------------------------------
+BASE_URL         = http://localhost:8080
+ADMIN_TOKEN_FILE = target/jwt_admin.token     (user_id=1, admin_id=1  -> bozlak)
+USER_TOKEN_FILE  = target/jwt_user.token      (user_id=2, admin değil -> testuser1)
+SON_CEVAP        = target/last_response.json
+SONUC_DOSYASI    = target/test_results.txt
+
+Ortam kısıtları (bunlara uy, alternatif arama):
+- Her 'wsl -e bash -lc' çağrısı KENDİ shell'idir. Değişken bir sonraki komuta taşınmaz.
+  Bu yüzden JWT token'lar dosyaya yazılır, sonraki komutlarda $(cat <dosya>) ile okunur.
+- WSL'de jq YOK, python3 VAR. JSON ayrıştırma python3 ile yapılır.
+- Uygulama WSL içinde çalıştığı için curl de WSL içinden localhost:8080'e gider.
+
+KARAKTER KODLAMA (Türkçe karakterler) — ÖNEMLİ:
+Gerçek kullanımda "Müşteri" gibi Türkçe değerler giriliyor, o yüzden testler de Türkçe
+veriyle yapılır. ASCII'ye ("Musteri") çevirme; çevirirsen kodlama hatalarını test etmemiş
+olursun. Kurallar:
+
+  a) Shell zinciri UTF-8'i bozmuyor (ÖLÇÜLDÜ: Windows tool -> wsl -> bash zincirinden
+     "Müşteri" 9 byte olarak, 4d c3 bc c5 9f 74 65 72 69 dizisiyle geçiyor). Yani komut
+     içine Türkçe karakteri doğrudan yazabilirsin.
+
+  b) URL QUERY PARAMETRESİNDE percent-encoded (UTF-8) yaz. Swagger UI de tam olarak bunu
+     yapıyor; Swagger'ın ürettiği curl şuydu:
+       curl -X 'POST' \
+         'http://localhost:8080/api/v1/contact-types/create-contact-type?contactTypeName=M%C3%BC%C5%9Fteri' \
+         -H 'accept: */*' -H 'Authorization: Bearer <token>' -d ''
+     Yani "Müşteri" -> M%C3%BC%C5%9Fteri. Ham Türkçe karakteri URL'e koyma; percent-encoded
+     hali kesin ve tarayıcının gönderdiğiyle aynı olan biçimdir.
+     Yeni bir değerin karşılığını hesaplaman gerekirse:
+       wsl -e bash -lc 'python3 -c "import urllib.parse;print(urllib.parse.quote(\"Müşteri\"))"'
+
+  c) JSON GÖVDESİNDE Türkçe karakteri düz yaz (percent-encoding YAPMA, JSON gövdesi
+     UTF-8 taşır): -d "{\"contactName\":\"Ahmet Yılmaz\"}"
+
+  d) DB doğrulamasında sadece göze güvenme. Terminal/psql çıktısı doğru görünürken byte'lar
+     bozuk olabilir. [KALIP-5] ile byte uzunluğunu ve hex'i karşılaştır.
+
+[KALIP-1] Token alma (login):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/login_admin.json -w "HTTP:%{http_code}\n" -X POST http://localhost:8080/api/login -H "Content-Type: application/json" -d "{\"username\":\"bozlak\",\"password\":\"bozlak\"}" && python3 -c "import json;print(json.load(open(\"target/login_admin.json\"))[\"object\"][\"jwtToken\"])" > target/jwt_admin.token && wc -c target/jwt_admin.token'
+
+[KALIP-2] Token'lı POST/PUT çağrısı (gövdeli):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/last_response.json -w "HTTP:%{http_code}\n" -X POST "http://localhost:8080/<yol>" -H "Authorization: Bearer $(cat target/jwt_admin.token)" -H "Content-Type: application/json" -d "{\"alan\":\"deger\"}"; echo "--- body ---"; cat target/last_response.json; echo'
+
+  Tırnak notu: dış tırnaklar tek tırnak, JSON içindeki tırnaklar \" olarak yazılır;
+  bash bunları normal " haline getirir. Tek tırnak KULLANMA (dış tırnağı kapatır).
+
+[KALIP-3] Query parametreli çağrı (gövdesiz, ör. contact-types):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/last_response.json -w "HTTP:%{http_code}\n" -X POST "http://localhost:8080/api/v1/contact-types/create-contact-type?contactTypeName=M%C3%BC%C5%9Fteri" -H "accept: */*" -H "Authorization: Bearer $(cat target/jwt_admin.token)" -d ""; echo "--- body ---"; cat target/last_response.json; echo'
+
+  Bu, Swagger UI'ın ürettiği curl'ün birebir karşılığıdır: aynı percent-encoded query
+  parametresi, aynı "accept: */*" başlığı, aynı boş gövde (-d ""). Endpoint @RequestParam
+  ile çalışıyor, JSON gövdesi beklemiyor.
+
+[KALIP-4] Veritabanı doğrulama:
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -c "SELECT ...;"'
+  Tek satır/tek değer karşılaştırması için: psql -tAc "SELECT ...;"
+
+[KALIP-5] Kodlama doğrulama (Türkçe karakter içeren her alan için ZORUNLU):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT contact_type_name, char_length(contact_type_name), octet_length(contact_type_name), encode(convert_to(contact_type_name,'\''UTF8'\''),'\''hex'\'') FROM contact_types WHERE contact_type_id=1;"'
+
+  TIRNAK KURALI (ÖLÇÜLDÜ, tahmin değil): psql sorgusunun içindeki tek tırnaklar '\''
+  olarak yazılır. Okunuşu: dış tek tırnağı kapat ( ' ), kaçışlı tek tırnak koy ( \' ),
+  dış tek tırnağı yeniden aç ( ' ). Bash bunu tek bir ' karakterine indirger.
+
+  '' (iki tek tırnak) YAZMA. Bash '' dizisini "tırnağı kapat, hemen yeniden aç" diye
+  okur, yani boş stringdir ve tırnaklar TAMAMEN KAYBOLUR. Ölçüm:
+      girdi : echo "SELECT ''contact_type'' kaynak, convert_to(x,''UTF8'')"
+      çıktı : SELECT contact_type kaynak, convert_to(x,UTF8)        <- tırnak yok
+      girdi : echo "SELECT '\''contact_type'\'' kaynak, convert_to(x,'\''UTF8'\'')"
+      çıktı : SELECT 'contact_type' kaynak, convert_to(x,'UTF8')    <- doğru
+  Tırnaklar kaybolunca psql 'UTF8' string sabiti yerine UTF8 SÜTUNUNU arar ve
+  "ERROR: column ... does not exist" verir.
+
+  $$...$$ (dollar-quoting) da KULLANMA: bash $$ ifadesini çift tırnak içinde bile
+  kendi PID'ine genişletir ( $$contact_type$$ -> 24895contact_type24895 ).
+
+  Beklenen değerler (ÖLÇÜLDÜ, tahmin değil):
+    Müşteri       -> char=7   octet=9    hex=4dc3bcc59f74657269
+    Ahmet Yılmaz  -> char=12  octet=13   hex=41686d65742059c4b16c6d617a
+
+  octet_length = char_length çıkıyorsa Türkçe karakterler yolda kaybolmuş demektir
+  (ör. "Musteri" veya "M?steri" yazılmıştır) -> [ON_ERROR]. Ekranda doğru görünmesi
+  yeterli kanıt DEĞİLDİR; kriter hex eşleşmesidir.
+
+CEVAP GÖVDESİ SÖZLEŞMESİ (dev.bozlak.core.responses):
+- Başarılı, gövdesiz  : {"success":true}
+- Başarılı, nesneli   : {"success":true,"object":{...}}      (login -> object.jwtToken)
+- Hatalı              : {"success":false,"message":"..."}
+Yani JSON alan adı "isSuccess" değil "success"tir. Token yolu: .object.jwtToken
+
+SABİT TEST VERİLERİ (bütün modüller BUNLARI kullanır, kendi verini uydurma):
+  admin kullanıcı    : username=bozlak       password=bozlak
+  yeni kullanıcı     : username=testuser1    password=Test1234!    email=testuser1@example.com
+                       isActive=true  isAdmin=false  extraInformation=null
+  yeni şifre         : Test5678!             (change-password testi için)
+  contact type       : Müşteri
+                       URL'de: contactTypeName=M%C3%BC%C5%9Fteri
+                       DB'de  : 'Müşteri'  (char=7 octet=9 hex=4dc3bcc59f74657269)
+  contact            : contactName=Ahmet Yılmaz  contactTypeId=1  phoneNumber=05551112233
+                       JSON gövdesinde düz yazılır (percent-encoding yok)
+                       DB'de  : 'Ahmet Yılmaz' (char=12 octet=13 hex=41686d65742059c4b16c6d617a)
+  hesap              : accountName=Kasa  isCashAccount=true  amount=1000.00
+  ürün 1             : productOrServiceName=Klavye  saleUnitPrice=250.00  purchaseUnitPrice=180.00
+  ürün 2             : productOrServiceName=Mouse   saleUnitPrice=150.00  purchaseUnitPrice=90.00
+
+BEKLENEN ID'LER (IDENTITY sayaçları 1'den başlar; modüller birbirinin ID'sine bağlıdır):
+  users.user_id            : 1 = bozlak, 2 = testuser1
+  admins.admin_id          : 1 = bozlak
+  contact_types.id         : 1 = Müşteri
+  contacts.contact_id      : 1 = Ahmet Yılmaz  (user_id=2)
+  accounts.account_id      : 1 = Kasa          (user_id=1)
+  product_or_services      : 1 = Klavye (code=1), 2 = Mouse (code=2)   (user_id=2)
+Bir ID beklenenden farklı çıkarsa DEVAM ETME -> [ON_ERROR]. Sonraki modüller yanlış
+satırı doğrulayıp sahte "başarılı" üretir.
+
+
+-------------------------------------------------------------------------------
+T2. MODÜL SIRASI (dağıtım tablosu)
+-------------------------------------------------------------------------------
+Bütün modül dosyaları bu dosyayla aynı dizindedir:
+  src/test/resources/ai_instructions/
+
+SIRA | DOSYA                             | DURUM | ÖN KOŞUL | ÜRETTİĞİ ARTIFACT
+-----+-----------------------------------+-------+----------+---------------------------
+  1  | login_instructions.txt            | PASIF | T0       | target/jwt_admin.token
+  2  | user_instructions.txt             | PASIF | 1        | user_id=2, target/jwt_user.token
+  3  | contact_type_instructions.txt     | PASIF | 1        | contact_type_id=1
+  4  | contact_instructions.txt          | PASIF | 2, 3     | contact_id=1
+  5  | account_instructions.txt          | PASIF | 1        | account_id=1
+  6  | product_or_service_instructions.txt| PASIF| 2        | product_or_service_id=1,2
+
+Kapsamlar (detay ilgili dosyadadır):
+  1 login    : POST /api/login  (pozitif: bozlak; negatif: yanlış şifre -> 401)
+  2 user     : POST /api/v1/users/add-user       (admin token -> 201)
+               POST /api/v1/users/add-user       (user token  -> 403 "You are not Admin!")
+               PUT  /api/v1/users/change-password (user token -> 200)
+  3 contact  : POST /api/v1/contact-types/create-contact-type (admin -> 201, user -> 403)
+    type
+  4 contact  : POST /api/v1/contacts/create-contact (user token -> 201)
+  5 account  : POST /api/v1/accounts/create-account (admin token -> 201;
+               negatif: isCashAccount=true & amount=-5 -> 400)
+  6 product  : POST /api/v1/product-or-services/create-product-or-service (user token -> 201 x2,
+               kod 1 ve 2 üretilmeli; negatif: saleUnitPrice=-1 -> 400)
+
+MODÜL DÖNGÜSÜ — her modül için sırayla şunu yap:
+  (a) DURUM sütunu PASIF ise modülü ATLA, T3'e "ATLANDI" yaz, sıradaki modüle geç.
+  (b) Dosya var mı ve boş mu:
+        wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && wc -c src/test/resources/ai_instructions/<dosya>'
+      Beklenen: dosya var ve boyut > 0. Yoksa/boşsa -> [ON_ERROR], sebep:
+      "<dosya> yok veya boş; bu modülün testleri tanımlı değil".
+  (c) O dosyaya geç, adımlarını sırayla uygula.
+  (d) Modül bitince BURAYA (T2'ye) dön, T3'ü uygula, sıradaki modüle geç.
+  (e) Modül içinde bir adım patlarsa: sonraki modüle GEÇME, [ON_ERROR] uygula.
+
+NOT: Bu dosya yazıldığında modül dosyalarının hiçbiri henüz yazılmamıştı; sırayla
+yazılacaklar. Yazılmamış bir modülü çalıştırmayı deneme; ya dosyayı yaz ya da DURUM
+sütununu PASIF yap. PASIF modül varsa T4'teki beklenen sayılar da o modül kadar düşer;
+hangi sayının ne olacağından emin değilsen tahmin etme -> [ON_ERROR] ve bana sor.
+
+
+-------------------------------------------------------------------------------
+T3. MODÜL SONU KAYDI (her modülden sonra, atlanan modüller dahil)
+-------------------------------------------------------------------------------
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && echo "<sira> <dosya> <GECTI|ATLANDI> $(date -Iseconds)" >> target/test_results.txt && tail -n 1 target/test_results.txt'
+Beklenen: eklenen satır ekrana gelir. (<...> yerlerini gerçek değerlerle doldur.)
+Bu dosya Adım 6'daki infos.txt'in içine girecek; modül bazlı özet burada tutulur.
+
+
+-------------------------------------------------------------------------------
+T4. TOPLU DOĞRULAMA (bütün modüller bittikten sonra)
+-------------------------------------------------------------------------------
+T4a. Tablo sayıları:
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -c "SELECT (SELECT count(*) FROM users) users, (SELECT count(*) FROM admins) admins, (SELECT count(*) FROM contact_types) contact_types, (SELECT count(*) FROM contacts) contacts, (SELECT count(*) FROM accounts) accounts, (SELECT count(*) FROM product_or_services) products;"'
+Beklenen (bütün modüller AKTIF ve geçtiyse):
+  users=2  admins=1  contact_types=1  contacts=1  accounts=1  products=2
+  (admins=1 doğrudur: add-user ile admin satırı OLUŞMAZ, sadece users satırı oluşur.)
+
+T4b. Log tabloları (her işlem kendi log kaydını yazmış olmalı):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -c "SELECT (SELECT count(*) FROM admin_activities_about_user) adm_user, (SELECT count(*) FROM admin_activities_about_contact_type_created_or_deleted) adm_ctype, (SELECT count(*) FROM user_himself_activities) user_self, (SELECT count(*) FROM user_contact_activities_created_or_deleted) user_contact, (SELECT count(*) FROM user_account_create_or_delete_activities) user_account, (SELECT count(*) FROM product_or_service_create_or_delete_activities) product_act;"'
+Beklenen:
+  adm_user=1  adm_ctype=1  user_self=1  user_contact=1  user_account=1  product_act=2
+Sayılardan biri 0 ise: ana kayıt oluşmuş ama log yazılmamıştır (servislerdeki @Transactional
+akışı bozulmuş demektir) -> [ON_ERROR]. Bu, sadece HTTP koduna bakınca GÖRÜNMEYEN hatadır.
+
+T4c. Log içerikleri doğru mu:
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -c "SELECT admin_id, admin_activity_type, user_id FROM admin_activities_about_user; SELECT user_id, activity_type_name FROM user_himself_activities; SELECT contact_id, is_activity_create FROM user_contact_activities_created_or_deleted; SELECT account_id, is_activity_create FROM user_account_create_or_delete_activities; SELECT product_or_service_id, is_activity_create FROM product_or_service_create_or_delete_activities;"'
+Beklenen:
+  admin_activities_about_user            : admin_id=1, admin_activity_type=CREATED_USER_BY_ADMIN, user_id=2
+  user_himself_activities                : user_id=2, activity_type_name=USER_CHANGED_PASSWORD
+  user_contact_activities...             : contact_id=1, is_activity_create=t
+  user_account_create_or_delete...       : account_id=1, is_activity_create=t
+  product_or_service_create_or_delete... : product_or_service_id=1 ve 2, is_activity_create=t
+
+T4d. Türkçe alanların kodlaması (toplu kontrol):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -c "SELECT '\''contact_type'\'' kaynak, contact_type_name deger, char_length(contact_type_name) ch, octet_length(contact_type_name) oc, encode(convert_to(contact_type_name,'\''UTF8'\''),'\''hex'\'') hex FROM contact_types UNION ALL SELECT '\''contact'\'', contact_name, char_length(contact_name), octet_length(contact_name), encode(convert_to(contact_name,'\''UTF8'\''),'\''hex'\'') FROM contacts;"'
+Beklenen:
+  contact_type | Müşteri      | ch=7  | oc=9  | hex=4dc3bcc59f74657269
+  contact      | Ahmet Yılmaz | ch=12 | oc=13 | hex=41686d65742059c4b16c6d617a
+Hex tutmuyorsa -> [ON_ERROR]. Bu adım, Swagger'dan Türkçe veri girip DBeaver'da doğru
+göründüğünü teyit etme alışkanlığının otomatik ve byte seviyesinde kesin halidir.
+
+T4e. Uygulama logunda beklenmeyen hata var mı:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && grep -nE "Unexpected system error|Unexpected Backend Error|ERROR" target/run.log | head -30; echo TARAMA_BITTI'
+Beklenen: hiçbir satır gelmemeli, sadece "TARAMA_BITTI".
+Satır geldiyse: negatif testlerin ürettiği loglar WARN/INFO seviyesindedir (validation,
+BadCredentials, CashAmountValueCantBeNegative...), ERROR beklenmez. Gelen satırları
+değerlendirip [ON_ERROR] uygula; emin değilsen tahmin etme, satırları bana göster.
+
+T4f. Sonuç özetini ekrana bas:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && cat target/test_results.txt'
+Beklenen: AKTIF modül sayısı kadar satır, hepsi GECTI (veya PASIF olanlar ATLANDI).
+
+
+-------------------------------------------------------------------------------
+T5. TEST FAZI BİTİŞİ
+-------------------------------------------------------------------------------
+T0-T4 arasındaki her adım Beklenen sonucu verdiyse test fazı BAŞARILIDIR.
+Geçme kriteri budur; "sanırım oldu" yok.
+
+main_instructions_v2.txt Adım 6'ya (BAŞARILI BİTİŞ) dön. Uygulamayı burada kapatma,
+kapatma işini oradaki [CLEANUP] yapar. Adım 6a'daki infos.txt yazılırken
+target/test_results.txt içeriğinin de rapora girdiğinden emin ol.
+
+
+===============================================================================
+ MODÜL DOSYASI SÖZLEŞMESİ (yeni bir <modul>_instructions.txt yazılırken uyulacak format)
+===============================================================================
+Bu bölüm, T2'deki modül dosyalarını yazarken kullanılacak şablondur. Yeni modül
+eklenirse hem bu şablona uyulur hem de T2 tablosuna satır eklenir.
+
+1. Başlık: modülün adı, hangi endpoint'leri kapsadığı.
+2. Giriş/çıkış: "Buraya main2_instructions.txt T2'den gelinir, bitince T2'ye dönülür."
+3. Adım numarası formatı: <MODUL_KISA_AD>.<n>   (örn. USER.1, USER.2, ACCOUNT.1)
+4. Her adım şu üç parçayı içerir:
+     KOMUT        : birebir çalıştırılacak wsl komutu (T1'deki kalıplardan biri)
+     BEKLENEN     : HTTP kodu + cevap gövdesi (success alanı, hata mesajı)
+     DB DOĞRULAMA : psql sorgusu + beklenen satır/değer
+   DB doğrulaması olmayan adım yazma; Swagger'da 201 görüp DBeaver'a bakmamak gibi olur.
+5. Log tablosu doğrulaması: ana kayıt hangi log tablosuna yazıyorsa o da doğrulanır.
+6. En az bir negatif test: yetki (403), validation (400) veya kimlik (401).
+7. Sabit veriler T1'den alınır; modül kendi test verisini uydurmaz. Türkçe karakter içeren
+   bir alan yazılıyorsa o modülde [KALIP-5] kodlama doğrulaması da zorunludur.
+8. [ON_ERROR] / [CLEANUP] yeniden tanımlanmaz; main_instructions_v2.txt'tekiler kullanılır.
+9. Dosya sonunda: "main2_instructions.txt T2'ye dön" satırı.
+
+
+======================================================================================
+ NOT : Claude Code, Opus 5 ile yazıldı. Bağlı dosyalar: main_instructions_v2.txt (ana
+ gövde), T2'deki modül dosyaları (test detayları).
+======================================================================================
