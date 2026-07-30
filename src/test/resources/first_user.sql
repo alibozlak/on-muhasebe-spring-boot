@@ -1,0 +1,1 @@
+INSERT INTO users (created_at,email,extra_information,hashed_password,is_active,is_admin,username,who_created_admin_id) VALUES (now()::date,'bozlak.dev@gmail.com',NULL,'$2a$10$6yPp4/9ZCwvnyy1YcIU0dePkuQNq5DFUy8vThUWxDKuZkiU4GxS5e',true,true,'bozlak',1);
