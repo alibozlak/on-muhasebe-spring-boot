@@ -1,15 +1,10 @@
 services:
   postgres:
     image: 'postgres:17-alpine'
+    container_name: pre_accounting_db
     environment:
       POSTGRES_DB: test_db
       POSTGRES_USER: bozlak
       POSTGRES_PASSWORD: secret
     ports:
       - '5433:5432'
-    volumes:
-      - db_pre-accounting:/var/lib/postgresql/data
-
-volumes:
-  db_pre-accounting:
-

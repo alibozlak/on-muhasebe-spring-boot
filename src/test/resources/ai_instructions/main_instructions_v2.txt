@@ -1,0 +1,187 @@
+===============================================================================
+ main_instructions (v2) — Yapay zeka test pipeline talimatları
+===============================================================================
+Bu dosya, yapay zekanın sırayla uygulaması gereken bir test pipeline'ını tanımlar.
+
+TEMEL KURALLAR
+- Adımlar 1'den başlayarak sırayla uygulanır. Paralel adım yok, single thread.
+- Bir adımın "Beklenen" kısmı sağlanmazsa: ALT ADIMLARA GEÇME, [ON_ERROR] bloğunu uygula.
+- Komutlar bu dosyada birebir verilmiştir; kendi kafana göre değiştirme.
+- Beklenen sonuç belirsiz kaldıysa tahmin etme: [ON_ERROR] uygula ve bana sor.
+
+
+-------------------------------------------------------------------------------
+0. SABİTLER VE ORTAM
+-------------------------------------------------------------------------------
+PROJE_WIN = C:\angularAndJava\on_muhasebe\on-muhasebe-spring-boot
+PROJE_WSL = /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot
+CONTAINER = pre_accounting_db
+DB_NAME   = test_db     (compose.yaml -> POSTGRES_DB)
+DB_USER   = bozlak      (compose.yaml -> POSTGRES_USER)
+RUN_LOG   = target/run.log
+PID_FILE  = target/app.pid
+
+Ortam bilgisi:
+- İşletim sistemim Windows, WSL2 üzerinde Ubuntu var. Maven ve Docker SADECE WSL içinde
+  kurulu (Windows tarafında değil).
+- İnteraktif bir CMD/WSL penceresinin açık kalacağını VARSAYMA. Her komut kendi kendine
+  yeterli olmalı ve şu kalıpla çalıştırılmalı:
+      wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && <komut>'
+  Önceki bir 'cd'nin veya set edilmiş bir değişkenin hâlâ yaşadığına güvenme.
+- Projede Spring Boot Docker Compose Support var. 'mvn spring-boot:run' compose.yaml'ı
+  ayağa kaldırır ve bağlantı bilgilerini application.properties'teki spring.datasource.*
+  ayarlarının ÜZERİNE yazar. Yani uygulama on_muhasebe_db'ye DEĞİL, container içindeki
+  test_db'ye bağlanır. SQL'ler de test_db'ye gitmek zorunda. Adım 3 bunu doğrular.
+- 'mvn spring-boot:run' terminali bloke eden bir komuttur. Bu yüzden Adım 2'de arka planda
+  ve logları dosyaya yazacak şekilde başlatılır; böylece uygulama ayaktayken aynı shell'den
+  docker/psql komutları verilebilir.
+
+
+-------------------------------------------------------------------------------
+1. ÖN KONTROL
+-------------------------------------------------------------------------------
+Komut:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && pwd && ls -1 pom.xml && docker ps -a --filter name=pre_accounting_db'
+
+Beklenen:
+- pwd çıktısı PROJE_WSL olmalı.
+- 'pom.xml' listelenmeli (yanlış dizindeysen buradan anlarsın).
+- Container listesi BOŞ olmalı.
+
+Container zaten varsa (önceki koşudan kalmış):
+  wsl -e bash -lc 'docker rm -f pre_accounting_db && docker ps -a --filter name=pre_accounting_db'
+Bu şart önemli: Adım 4'teki SQL'ler user_id=1 / admin_id=1 varsayıyor. Eski veri kalırsa
+IDENTITY sayacı 1'den başlamaz ve admins tablosundaki foreign key patlar.
+
+
+-------------------------------------------------------------------------------
+2. UYGULAMAYI BAŞLAT
+-------------------------------------------------------------------------------
+2a. Arka planda başlat, PID'i kaydet, tüm logları target/run.log'a yaz:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot || exit 1; mkdir -p target; nohup mvn spring-boot:run > target/run.log 2>&1 & echo $! > target/app.pid; sleep 2; cat target/app.pid'
+
+2b. Başlamayı bekle (5 saniyede bir kontrol, en fazla 240 saniye):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && for i in $(seq 1 48); do if grep -q "Started OnMuhasebeSpringBootApplication in" target/run.log; then echo HAZIR; exit 0; fi; if grep -qE "BUILD FAILURE|APPLICATION FAILED TO START|Error starting ApplicationContext" target/run.log; then echo BASLATMA_HATASI; exit 1; fi; sleep 5; done; echo TIMEOUT; exit 1'
+
+Beklenen: çıktı "HAZIR".
+"BASLATMA_HATASI" veya "TIMEOUT" -> [ON_ERROR].
+Not: 240 saniye, ilk koşuda Maven'ın dependency indirmesi için verilmiş bir üst sınırdır.
+Sonsuza kadar bekleme; süre dolarsa bu bir hatadır.
+
+
+-------------------------------------------------------------------------------
+3. VERİTABANINI VE TABLOLARI DOĞRULA
+-------------------------------------------------------------------------------
+3a. Container ayakta mı:
+  wsl -e bash -lc 'docker ps --filter name=pre_accounting_db --format "{{.Names}} | {{.Status}} | {{.Ports}}"'
+Beklenen: pre_accounting_db, "Up ...", port eşlemesi 0.0.0.0:5433->5432/tcp.
+
+3b. Tablolar doğru veritabanında oluşmuş mu (Spring Data JPA, ddl-auto=update):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -c "\dt"'
+Beklenen: en azından 'users' ve 'admins' tabloları listelenmeli.
+Tablolar YOKSA uygulama başka bir veritabanına bağlanmış demektir -> [ON_ERROR].
+(Bu kontrol atlanırsa SQL'ler boş/yanlış bir DB'ye gider ve pipeline "başarılı" görünür.)
+
+3c. users tablosu boş mu:
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT count(*) FROM users;"'
+Beklenen: 0. Değilse -> [ON_ERROR] (Adım 1'deki id varsayımı bozulmuş).
+
+
+-------------------------------------------------------------------------------
+4. İLK USER VE İLK ADMIN
+-------------------------------------------------------------------------------
+Sıra önemlidir: önce user, sonra admin. (admins.user_id -> users.user_id=1 olmak zorunda;
+ayrıca admins.who_created_admin_id kendi satırına referans verir, yani admin_id=1.)
+
+4a. İlk user:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && docker exec -i pre_accounting_db psql -U bozlak -d test_db -v ON_ERROR_STOP=1 < src/test/resources/first_user.sql'
+Beklenen: "INSERT 0 1" ve exit code 0. Hata -> [ON_ERROR].
+
+4b. Doğrula:
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -c "SELECT user_id, username, email, is_admin FROM users;"'
+Beklenen: tek satır, user_id = 1, username = bozlak. Değilse -> [ON_ERROR].
+
+4c. İlk admin:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && docker exec -i pre_accounting_db psql -U bozlak -d test_db -v ON_ERROR_STOP=1 < src/test/resources/first_admin.sql'
+Beklenen: "INSERT 0 1" ve exit code 0. Hata -> [ON_ERROR].
+
+4d. Doğrula:
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -c "SELECT admin_id, user_id, who_created_admin_id, is_active FROM admins;"'
+Beklenen: tek satır, admin_id = 1, user_id = 1, who_created_admin_id = 1.
+Değilse -> [ON_ERROR].
+
+
+-------------------------------------------------------------------------------
+5. TEST FAZI (main2_instructions.txt)
+-------------------------------------------------------------------------------
+5a. Dosya var mı ve boş mu:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && wc -c src/test/resources/ai_instructions/main2_instructions.txt'
+
+Beklenen: dosya var ve boyutu > 0.
+Dosya yoksa veya boşsa -> [ON_ERROR]; sebep olarak "main2_instructions.txt boş, test fazı
+tanımlı değil" yaz. Testleri KENDİN UYDURMA, bu adımı atlayıp Adım 6'ya geçme.
+
+5b. Dosya doluysa: main2_instructions.txt'e geç, oradaki adımları aynı kurallarla (sırayla,
+hata olursa [ON_ERROR]) uygula, bittiğinde buraya Adım 6'ya dön.
+
+
+-------------------------------------------------------------------------------
+6. BAŞARILI BİTİŞ
+-------------------------------------------------------------------------------
+Buraya sadece Adım 1-5'in tamamı "Beklenen" sonucu verdiyse gelinir. "Testler başarılıdır"
+diye varsayma; geçme kriteri main2_instructions.txt'te tanımlı olan kriterdir.
+
+6a. Rapor dosyasını yaz (pom.xml ile aynı dizine, yani PROJE_WSL köküne):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && { echo "SONUC: BASARILI"; echo "TARIH: $(date -Iseconds)"; echo "----- docker ps -a -----"; docker ps -a; echo "----- run.log (Maven + Spring tum loglar) -----"; cat target/run.log; } > infos.txt && ls -l infos.txt'
+
+6b. [CLEANUP] bloğunu uygula.
+
+6c. Bana özet ver: hangi adımlar geçti, infos.txt nerede.
+
+
+===============================================================================
+ [ON_ERROR] — hata bloğu
+===============================================================================
+Bir adım başarısız olduğunda bu bloğa girilir. Bu bloğa atıf yapabilirim, context'inde kalsın.
+
+1. DUR. Sonraki adımlara geçme. Hatayı kendi başına "düzeltmeye" çalışma.
+2. Uygulamayı HENÜZ kapatma; önce logları topla (kapatırsan logları kaybedersin):
+     wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && { echo "SONUC: HATA"; echo "HATA ADIMI: <adim numarasi>"; echo "CALISTIRILAN KOMUT: <komut>"; echo "BEKLENEN / GORULEN: <kisa aciklama>"; echo "TARIH: $(date -Iseconds)"; echo "----- docker ps -a -----"; docker ps -a; echo "----- run.log (Maven + Spring tum loglar) -----"; cat target/run.log; } > errors.txt && ls -l errors.txt'
+   (<...> yerlerini gerçek değerlerle doldur.)
+3. [CLEANUP] bloğunu uygula.
+4. Beni uyar: hangi adımda patladı, hatanın özeti (log'daki ilgili satırlar) ve errors.txt'in
+   yolu. Kendi kafana göre alternatif bir yol denemeden bekle.
+
+
+===============================================================================
+ [CLEANUP] — kapatma bloğu
+===============================================================================
+Hem başarılı bitişte hem hata durumunda, loglar yazıldıkTAN SONRA uygulanır.
+
+1. Uygulamayı nazikçe durdur (SIGTERM). 'kill -9' KULLANMA; graceful shutdown gerekiyor:
+     wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && kill $(cat target/app.pid)'
+
+2. Kapanma loglarını bekle (en fazla 60 saniye):
+     wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && for i in $(seq 1 12); do if grep -q "Shutdown completed" target/run.log; then echo KAPANDI; exit 0; fi; sleep 5; done; echo KAPANMA_TIMEOUT; exit 1'
+   Beklenen: HikariPool'dan "Shutdown initiated..." ve "Shutdown completed." logları.
+   NOT: Süreç sinyalle sonlandırıldığı için Maven "BUILD SUCCESS" yazmayabilir. BUILD SUCCESS'i
+   zorunlu kriter sayma; kriter "Shutdown completed" + container'ın Exited olmasıdır.
+
+3. Container'ın durduğunu doğrula:
+     wsl -e bash -lc 'docker ps -a --filter name=pre_accounting_db --format "{{.Names}} | {{.Status}}"'
+   Beklenen: "Exited (...)". Docker Compose Support, uygulama kapanırken container'ı durdurur.
+   Hâlâ "Up" ise (sadece bu durumda izinli):
+     wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && docker compose stop'
+
+4. Container'ı sil ve sildiğini doğrula:
+     wsl -e bash -lc 'docker rm pre_accounting_db && docker ps -a --filter name=pre_accounting_db'
+   Beklenen: ikinci komutun çıktısı boş (başlık satırından başka satır yok).
+
+5. Arkada süreç kalmadığını doğrula:
+     wsl -e bash -lc 'pgrep -fa "spring-boot:run" || echo TEMIZ'
+   Beklenen: "TEMIZ". Süreç kaldıysa PID'ini bana bildir.
+
+
+======================================================================================
+ NOT : Claude Code, Opus 5 (Extra) ile main_instructions.txt dosyasından düzenlendi.
+======================================================================================

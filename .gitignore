@@ -43,3 +43,8 @@ javadoc.txt
 
 ### Docker Compose Support - Test DB directory ###
 db_pre-accounting/
+
+### AI Output for Test-Pipeline ###
+errors.txt
+infos.txt
+

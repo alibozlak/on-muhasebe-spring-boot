@@ -1,0 +1,42 @@
+Bu dosya yapay zekaya komut vermek için oluşturulmuş ana dosyadır. Amaç yapay zekanın aşağıda vereceğim komutları
+  sırayısla takip etmesi ve bir test pipeline oluşturmak.
+
+Bilgi :
+- Bu dosya Maven + Spring Boot projesinde bir dosyadır.
+  Konumu : Maven_Kök_Dizini/src/test/resources/ai_instructions
+- Bilgisayarımın işletim sistemi Windows. WSL2 var, burada Ubuntu üzerinde Docker ve Maven kurulu.
+- Projede Docker Compose Support ekli (Hem pom.xml'de ilgili dependency var hem de kök dizinde compose.yaml dosyası).
+  Yani sen 'mvn spring-boot:run' komutu verdiğinde bir PostgreSQL container'ı ayağa kalkacak.
+
+Komutlar :
+- Vereceğim komutları sırasıyla yapmanı ve single thread çalışmanı istiyorum. CMD üzerinden ilerleyeceğiz.
+- Bir CMD ekranı aç, bu projenin kök dizinine (pom.xml dosyasının olduğu dizine) yerleş. Doğru dizinde misin diye kontrol
+  et (dir veya ls komutu verdiğinde CMD sana pom.xml dosyasını mutlaka vermeli). CMD ekranı iş akışı tamamlanıncaya
+  kadar açık kalsın.
+- 'wsl' komutu ver. Projenin kök dizininde Ubuntu komutları verilebiliyor olmalı şimdi.
+
+-(1) Vereceğim komutların herhangi bir adımında hata alırsan alttaki komutlara geçme, beni uyar, projeyi kapatma (docker
+  compose down/stop tarzı komut verme), pom.xml'in olduğu kök dizinde errors.txt dosyası oluştur, verdiğim komutlarda
+  hangi adımda hata aldığını ve Maven'ın CMD ekranına akıttığı bütün logları (Spring logları dahil) bu dosyaya yaz sonra
+  projeyi kapat. ('docker ps' komutu verdiğinde "pre_accounting_db" adlı bir container gelmemeli.)
+  Spring'te HikariPool'dan "Shutdown initiated..." arkasından "Shutdown completed." INFO logları arkasından Maven'dan
+  "BUILD SUCCESS", "Finished at : ..." INFO logları aldığında önce 'docker rm pre_accounting_db' komutu ver,
+  'docker ps -a' komutu ile container silinmiş mi diye kontrol et, sonra 'exit' komutuyla WSL'den sonra
+  tekrar 'exit' komutuyla CMD'den tamamen çık.
+  (Bu komut setine (-(1) komut seti diyelim) atıf yapabilirim, context'inde kalsın.)
+
+- Projenin kök dizinindesin, 'mvn spring-boot:run' komutu ver ve Spring'ten "OnMuhasebeSpringBootApplication in ... seconds
+  (process running for ...)" INFO logu gelinceye kadar bekle. Gelmezse alttaki komutlara geçme. Beni uyar, CMD ekranından
+  tamamen çık.
+
+- Maven_Kök_Dizini/src/test/resources dizininde first_user.sql ve first_admin.sql dosyaları var. Şu an
+  pre_accounting_db adlı bir container ayakta, projede Spring Data JPA kullanıyorum, @Entity tabloları veritabanında
+  oluşmuş olmalı. (docker komutuyla veritabanından veya Spring Boot (Hibernate) loglarından kontrol edebilirsin.)
+  fist_user.sql dosyasındaki komutu kullanarak ilk user'ı oluştur, başarılı olunca first_admin.sql dosyasındaki komutu
+  kullanarak ilk admini oluştur. Hata alırsan -(1) komut setini uygula. Hata yoksa ilk user ve admin oluşmuş mu diye
+  veritabanına sorgu at (docker kullanabilirsin). Oluşmamışsa -(1) komut setini uygula.
+
+- Bu dosyayla aynı dizinde main2_instructions.txt dosyası olacak oraya geç.
+
+- Testler başarılı bence, pom.xml'de aynı dizinde olacak şekilde infos.txt dosyası oluştur ve Maven'ın + Spring'in bütün
+  loglarını buraya yaz. 'exit' komutlarıyla CMD'den tamamen çık.

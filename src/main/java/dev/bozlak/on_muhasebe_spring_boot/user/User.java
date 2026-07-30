@@ -1,6 +1,6 @@
 package dev.bozlak.on_muhasebe_spring_boot.user;
 
-import dev.bozlak.on_muhasebe_spring_boot.admin.Admin;
+//import dev.bozlak.on_muhasebe_spring_boot.admin.Admin;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
