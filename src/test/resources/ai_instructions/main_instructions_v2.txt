@@ -11,6 +11,33 @@ TEMEL KURALLAR
 
 
 -------------------------------------------------------------------------------
+ İZİNLER (ÖN YETKİLENDİRME)
+-------------------------------------------------------------------------------
+Sana "main_instructions_v2.txt'yi uygula" dediğimde, aşağıdakileri PEŞİNEN onaylamış
+sayılırım. Her komut için tek tek "çalıştırayım mı?" diye sorma; sırayla çalıştır,
+sonucu raporla.
+
+Kapsam (izin VERİLMİŞTİR):
+- Bu dosyada, main2_instructions.txt'te ve onun yönlendirdiği modül dosyalarında
+  (login_instructions.txt, user_instructions.txt, account_instructions.txt vb.) BİREBİR
+  yazılı olan her komut.
+- Kullanılan araçlar: wsl / bash, mvn, docker (ps, exec, rm, compose stop), psql, curl,
+  kill (SIGTERM), pgrep, rm (yalnızca aşağıda adı geçen çıktı dosyaları için),
+  errors.txt / infos.txt / target/ altındaki çıktı dosyalarını okuma-yazma.
+
+Kapsam DIŞI (bunlar için ayrıca sor, kendi başına yapma):
+- Bu dosyalarda yazmayan bir komutu "hatayı çözmek için" çalıştırmak.
+- Proje kaynağını değiştirmek: src/, pom.xml, compose.yaml, application.properties, .env.
+- git komutları (commit, push, reset, checkout...).
+- 'kill -9', imaj/volume silme (docker rmi, docker volume rm, docker system prune),
+  'docker compose down -v'.
+- Sistem geneline kurulum/güncelleme (apt install, npm -g vb.).
+
+Bu izin "hata olursa kendi kafana göre devam et" demek DEĞİLDİR. Bir adım Beklenen'i
+vermezse yine [ON_ERROR] uygulanır.
+
+
+-------------------------------------------------------------------------------
 0. SABİTLER VE ORTAM
 -------------------------------------------------------------------------------
 PROJE_WIN = C:\angularAndJava\on_muhasebe\on-muhasebe-spring-boot
@@ -40,7 +67,21 @@ Ortam bilgisi:
 -------------------------------------------------------------------------------
 1. ÖN KONTROL
 -------------------------------------------------------------------------------
-Komut:
+1a. Önceki koşudan kalan çıktı dosyalarını sil:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && rm -f errors.txt infos.txt target/run.log target/app.pid; ls -1 errors.txt infos.txt target/run.log target/app.pid 2>/dev/null; echo TEMIZLIK_TAMAM'
+
+Beklenen: çıktıda SADECE "TEMIZLIK_TAMAM" olmalı. Üstünde herhangi bir dosya adı
+listeleniyorsa silme başarısız olmuştur -> [ON_ERROR].
+Neden gerekli:
+- Adım 2a redirect'e ulaşamadan düşerse (ör. 'cd' başarısız olur ve 'exit 1' çalışırsa)
+  eski target/run.log yerinde kalır; Adım 2b eski logdaki "Started ..." satırını görüp
+  SAHTE "HAZIR" verir.
+- Eski target/app.pid kalırsa [CLEANUP] yanlış (veya artık var olmayan) bir PID'e kill
+  gönderir; uygulama arkada çalışmaya devam eder.
+- Eski errors.txt / infos.txt, bu koşunun sonucu sanılır.
+Not: 'rm -f' dosya yoksa hata vermez, bu normaldir. Bu 4 dosya dışında hiçbir şey silme.
+
+1b. Dizin ve container kontrolü:
   wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && pwd && ls -1 pom.xml && docker ps -a --filter name=pre_accounting_db'
 
 Beklenen:
@@ -123,6 +164,10 @@ tanımlı değil" yaz. Testleri KENDİN UYDURMA, bu adımı atlayıp Adım 6'ya 
 
 5b. Dosya doluysa: main2_instructions.txt'e geç, oradaki adımları aynı kurallarla (sırayla,
 hata olursa [ON_ERROR]) uygula, bittiğinde buraya Adım 6'ya dön.
+main2_instructions.txt kendi içinde modül dosyalarına (login_instructions.txt,
+user_instructions.txt, account_instructions.txt vb.) dallanır. O zincirin TAMAMI bitmeden
+Adım 6'ya dönme. [ON_ERROR] ve [CLEANUP] blokları o dosyalar için de geçerlidir; oralarda
+yeniden tanımlanmaz.
 
 
 -------------------------------------------------------------------------------
