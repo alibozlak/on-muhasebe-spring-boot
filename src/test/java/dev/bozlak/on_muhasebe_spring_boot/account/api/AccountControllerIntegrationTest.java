@@ -3,12 +3,12 @@ package dev.bozlak.on_muhasebe_spring_boot.account.api;
 import dev.bozlak.on_muhasebe_spring_boot.util.BaseIntegrationTest;
 import tools.jackson.databind.ObjectMapper;
 import dev.bozlak.on_muhasebe_spring_boot.account.dtos.CreateAccountRequestDto;
-import dev.bozlak.on_muhasebe_spring_boot.account.repository.JpaAccountRepository;
+import dev.bozlak.on_muhasebe_spring_boot.account.repository.JdbcAccountRepository;
 import dev.bozlak.on_muhasebe_spring_boot.logs
         .user_activities
         .module_without_service
         .user_account
-        .user_account_create_or_delete_activity.JpaUserAccountCreateOrDeleteActivityRepository;
+        .user_account_create_or_delete_activity.JdbcUserAccountCreateOrDeleteActivityRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -30,10 +30,10 @@ public class AccountControllerIntegrationTest extends BaseIntegrationTest {
     ObjectMapper objectMapper;
 
     @Autowired
-    JpaAccountRepository jpaAccountRepository;
+    JdbcAccountRepository jdbcAccountRepository;
 
     @Autowired
-    JpaUserAccountCreateOrDeleteActivityRepository jpaUserAccountCreateOrDeleteActivityRepository;
+    JdbcUserAccountCreateOrDeleteActivityRepository jdbcUserAccountCreateOrDeleteActivityRepository;
 
     @Test
     void createAccount_persistsAccountAndLog_andReturns201() throws Exception {
@@ -49,7 +49,7 @@ public class AccountControllerIntegrationTest extends BaseIntegrationTest {
         ).andExpect(status().isCreated());
 
         // assert 1: accounts table insert record
-        assertThat(this.jpaAccountRepository.findAll())
+        assertThat(this.jdbcAccountRepository.findAll())
                 .singleElement()
                 .satisfies(account -> {
                     assertThat(account.getUserId()).isEqualTo(userId);
@@ -60,7 +60,7 @@ public class AccountControllerIntegrationTest extends BaseIntegrationTest {
                 });
 
         // assert 2: Did inserted record user_account_create_or_delete_activities table
-        assertThat(this.jpaUserAccountCreateOrDeleteActivityRepository.findAll())
+        assertThat(this.jdbcUserAccountCreateOrDeleteActivityRepository.findAll())
                 .singleElement()
                 .satisfies(log -> {
                     assertThat(log.isActivityCreate).isTrue();

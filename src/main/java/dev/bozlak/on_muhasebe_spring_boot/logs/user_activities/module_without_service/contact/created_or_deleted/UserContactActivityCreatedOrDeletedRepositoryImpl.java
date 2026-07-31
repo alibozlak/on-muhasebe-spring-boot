@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository;
 @lombok.RequiredArgsConstructor
 public class UserContactActivityCreatedOrDeletedRepositoryImpl implements UserContactActivityCreatedOrDeletedRepository
 {
-    private final JpaUserContactActivityCreatedOrDeletedRepository jpaUserContactActivityCreatedOrDeletedRepository;
+    private final JdbcUserContactActivityCreatedOrDeletedRepository jdbcUserContactActivityCreatedOrDeletedRepository;
 
     @Override
     public void add(Long contactId) {
@@ -16,6 +16,6 @@ public class UserContactActivityCreatedOrDeletedRepositoryImpl implements UserCo
         userContactActivityCreatedOrDeleted.isActivityCreate = true;
         userContactActivityCreatedOrDeleted.whichDay = java.time.LocalDate.now();
 
-        this.jpaUserContactActivityCreatedOrDeletedRepository.save(userContactActivityCreatedOrDeleted);
+        this.jdbcUserContactActivityCreatedOrDeletedRepository.save(userContactActivityCreatedOrDeleted);
     }
 }

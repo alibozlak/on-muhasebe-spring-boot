@@ -1,13 +1,14 @@
 package dev.bozlak.on_muhasebe_spring_boot.logs.user_himself_activities;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Entity
-@Table(name = "user_himself_activities")
+@Table("user_himself_activities")
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
@@ -15,16 +16,15 @@ import lombok.Setter;
 public class UserHimselfActivity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_himself_activity_id")
+    @Column("user_himself_activity_id")
     private Long userHimselfActivityId;
 
-    @Column(name = "user_id", nullable = false)
+    @Column("user_id")
     private Integer userId;
 
-    @Column(name = "activity_type_name", nullable = false)
+    @Column("activity_type_name")
     private String activityTypeName;
 
-    @Column(name = "created_at", nullable = false)
+    @Column("created_at")
     private java.time.LocalDate createdAt;
 }

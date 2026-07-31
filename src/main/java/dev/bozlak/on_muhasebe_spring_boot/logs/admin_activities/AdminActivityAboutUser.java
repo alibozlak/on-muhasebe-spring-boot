@@ -1,15 +1,14 @@
 package dev.bozlak.on_muhasebe_spring_boot.logs.admin_activities;
 
-import dev.bozlak.on_muhasebe_spring_boot.admin.Admin;
-import dev.bozlak.on_muhasebe_spring_boot.user.User;
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
-@Entity
-@Table(name = "admin_activities_about_user")
+@Table("admin_activities_about_user")
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
@@ -17,21 +16,24 @@ import lombok.Setter;
 public class AdminActivityAboutUser {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "admin_activity_about_user_id")
+    @Column("admin_activity_about_user_id")
     private Long adminActivityAboutUserId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "admin_id", nullable = false)
-    private Admin admin;
+    /**
+     * FK to admins.admin_id. Was a lazy @ManyToOne to Admin; only the id was ever read.
+     */
+    @Column("admin_id")
+    private Short adminId;
 
-    @Column(name = "admin_activity_type", nullable = false)
+    @Column("admin_activity_type")
     private String adminActivityType;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    /**
+     * FK to users.user_id. Was a lazy @ManyToOne to User; only the id was ever read.
+     */
+    @Column("user_id")
+    private Integer userId;
 
-    @Column(name = "created_at", nullable = false)
+    @Column("created_at")
     private java.time.LocalDateTime createdAt;
 }

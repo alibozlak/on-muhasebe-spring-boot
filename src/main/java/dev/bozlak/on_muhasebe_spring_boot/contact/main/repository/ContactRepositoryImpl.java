@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 @lombok.RequiredArgsConstructor
 public class ContactRepositoryImpl implements ContactRepository {
 
-    private final JpaContactRepository jpaContactRepository;
+    private final JdbcContactRepository jdbcContactRepository;
     private final ContactRepositoryMapper contactRepositoryMapper;
 
     @Override
@@ -17,6 +17,6 @@ public class ContactRepositoryImpl implements ContactRepository {
         contact.userId = userId;
         contact.isActive = true;
 
-        return this.jpaContactRepository.save(contact).contactId;
+        return this.jdbcContactRepository.save(contact).contactId;
     }
 }

@@ -7,10 +7,10 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class AdminRepositoryImpl implements AdminRepository {
 
-    private final JpaAdminRepository jpaAdminRepository;
+    private final JdbcAdminRepository jdbcAdminRepository;
 
     @Override
     public Short getAdminIdByUserId(Integer userId) {
-        return this.jpaAdminRepository.getAdminIdByUserId(userId);
+        return this.jdbcAdminRepository.getAdminIdByUserId(userId);
     }
 }

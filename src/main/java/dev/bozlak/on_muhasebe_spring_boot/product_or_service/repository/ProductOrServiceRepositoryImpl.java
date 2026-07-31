@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 public class ProductOrServiceRepositoryImpl implements ProductOrServiceRepository {
 
     private final ProductOrServiceRepositoryMapper productOrServiceRepositoryMapper;
-    private final JpaProductOrServiceRepository jpaProductOrServiceRepository;
+    private final JdbcProductOrServiceRepository jdbcProductOrServiceRepository;
 
     @Override
     public Long createProductOrService(
@@ -23,11 +23,11 @@ public class ProductOrServiceRepositoryImpl implements ProductOrServiceRepositor
         productOrService.didDelete = false;
         productOrService.inventory = null;
 
-        productOrService.productOrServiceCode = this.jpaProductOrServiceRepository
+        productOrService.productOrServiceCode = this.jdbcProductOrServiceRepository
                 .getLastProductOrServiceCode(userId)
                 .orElse(0L);
         productOrService.productOrServiceCode ++;
 
-        return this.jpaProductOrServiceRepository.save(productOrService).productOrServiceId;
+        return this.jdbcProductOrServiceRepository.save(productOrService).productOrServiceId;
     }
 }

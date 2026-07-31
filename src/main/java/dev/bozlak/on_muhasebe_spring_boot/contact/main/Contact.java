@@ -1,31 +1,31 @@
 package dev.bozlak.on_muhasebe_spring_boot.contact.main;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
-@Entity
-@Table(name = "contacts")
+@Table("contacts")
 public class Contact {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "contact_id")
+    @Column("contact_id")
     public Long contactId;
 
-    @Column(name = "user_id", nullable = false)     // <----- FK
+    @Column("user_id")     // <----- FK
     public Integer userId;
 
-    @Column(name = "contact_name", nullable = false)
+    @Column("contact_name")
     public String contactName;
 
-    @Column(name = "extra_information", nullable = true)
+    @Column("extra_information")
     public String extraInformation;
 
-    @Column(name = "contact_type_id", nullable = false)     // <--- FK
+    @Column("contact_type_id")     // <--- FK
     public Byte contactTypeId;
 
-    @Column(name = "phone_number", nullable = true)
+    @Column("phone_number")
     public String phoneNumber;
 
-    @Column(name = "is_active", nullable = false)
+    @Column("is_active")
     public Boolean isActive;
 }

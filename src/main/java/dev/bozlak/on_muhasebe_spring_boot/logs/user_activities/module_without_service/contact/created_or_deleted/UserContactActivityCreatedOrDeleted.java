@@ -1,22 +1,22 @@
 package dev.bozlak.on_muhasebe_spring_boot.logs.user_activities.module_without_service.contact.created_or_deleted;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
-@Entity
-@Table(name = "user_contact_activities_created_or_deleted")
+@Table("user_contact_activities_created_or_deleted")
 public class UserContactActivityCreatedOrDeleted {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_contact_activity_created_or_deleted_id")
+    @Column("user_contact_activity_created_or_deleted_id")
     public Long userContactActivityCreatedOrDeletedId;
 
-    @Column(name = "contact_id", nullable = false)      // <--- FK
+    @Column("contact_id")      // <--- FK
     public Long contactId;
 
-    @Column(name = "is_activity_create", nullable = false)
+    @Column("is_activity_create")
     public Boolean isActivityCreate;
 
-    @Column(name = "which_day", nullable = false)
+    @Column("which_day")
     public java.time.LocalDate whichDay;
 }

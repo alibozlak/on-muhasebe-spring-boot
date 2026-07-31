@@ -9,12 +9,12 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class UserHimselfActivityRepositoryImpl implements UserHimselfActivityRepository {
 
-    private final JpaUserHimselfActivityRepository jpaUserHimselfActivityRepository;
+    private final JdbcUserHimselfActivityRepository jdbcUserHimselfActivityRepository;
     private final UserHimselfActivityMapper mapper;
 
     @Override
     public void addUserAboutHimselfActivity(AddUserActivityModel addUserActivityModel) {
         UserHimselfActivity userHimselfActivity = this.mapper.toEntityFormItsAddModel(addUserActivityModel);
-        this.jpaUserHimselfActivityRepository.save(userHimselfActivity);
+        this.jdbcUserHimselfActivityRepository.save(userHimselfActivity);
     }
 }

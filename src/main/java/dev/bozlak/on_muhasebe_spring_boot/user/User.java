@@ -1,16 +1,17 @@
 package dev.bozlak.on_muhasebe_spring_boot.user;
 
 //import dev.bozlak.on_muhasebe_spring_boot.admin.Admin;
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDate;
 
-@Entity
-@Table(name = "users")
+@Table("users")
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
@@ -18,34 +19,33 @@ import java.time.LocalDate;
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_id")
+    @Column("user_id")
     private Integer userId;
 
-    @Column(name = "username", nullable = false, unique = true)
+    @Column("username")
     private String username;
 
-    @Column(name = "hashed_password", nullable = false)
+    @Column("hashed_password")
     private String hashedPassword;
 
-    @Column(name = "email", nullable = false)
+    @Column("email")
     private String email;
 
-    @Column(name = "is_active", nullable = false)
+    @Column("is_active")
     private Boolean isActive;
 
-    @Column(name = "is_admin", nullable = false)
+    @Column("is_admin")
     private Boolean isAdmin;
 
-    @Column(name = "created_at", nullable = false)
+    @Column("created_at")
     private LocalDate createdAt;
 
 //    @ManyToOne(fetch = FetchType.LAZY)
 //    @JoinColumn(name = "who_created_admin_id", nullable = false)
 //    private Admin whoCreatedAdmin;
-    @Column(name = "who_created_admin_id", nullable = false)    // <--- For users_initial.sql
+    @Column("who_created_admin_id")    // <--- For users_initial.sql
     private Short whoCreatedAdminId;
 
-    @Column(name = "extra_information")
+    @Column("extra_information")
     private String extraInformation;
 }

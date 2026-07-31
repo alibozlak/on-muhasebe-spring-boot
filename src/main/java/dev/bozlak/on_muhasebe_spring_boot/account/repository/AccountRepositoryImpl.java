@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class AccountRepositoryImpl implements AccountRepository {
 
-    private final JpaAccountRepository jpaAccountRepository;
+    private final JdbcAccountRepository jdbcAccountRepository;
     private final AccountMapperForRepository accountMapperForRepository;
 
     @Override
@@ -17,6 +17,6 @@ public class AccountRepositoryImpl implements AccountRepository {
         Account account = this.accountMapperForRepository.toEntityFromItsCreateModel(createAccountRequestModel);
         account.setIsActive(true);
 
-        return this.jpaAccountRepository.save(account).getAccountId();
+        return this.jdbcAccountRepository.save(account).getAccountId();
     }
 }

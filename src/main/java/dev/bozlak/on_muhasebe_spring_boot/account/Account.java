@@ -1,15 +1,16 @@
 package dev.bozlak.on_muhasebe_spring_boot.account;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 import java.math.BigDecimal;
 
-@Entity
-@Table(name = "accounts")
+@Table("accounts")
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
@@ -17,28 +18,27 @@ import java.math.BigDecimal;
 public class Account {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long accountId;
 
     /**
-     * Don't use @JoinColumn!!
+     * FK in DB only. Spring Data JDBC has no @JoinColumn equivalent by design.
      */
-    @Column(name = "user_id", nullable = false)
+    @Column("user_id")
     private Integer userId;
 
-    @Column(name = "account_name", nullable = false)
+    @Column("account_name")
     private String accountName;
 
-    @Column(name = "created_at", nullable = false)
+    @Column("created_at")
     private java.time.LocalDate createdAt;
 
-    @Column(name = "is_cash_account", nullable = false)
+    @Column("is_cash_account")
     private Boolean isCashAccount;
 
-    @Column(name = "amount")
+    @Column("amount")
     private BigDecimal amount;
 
-    @Column(name = "is_active", nullable = false)
+    @Column("is_active")
     private Boolean isActive;
 
 }
