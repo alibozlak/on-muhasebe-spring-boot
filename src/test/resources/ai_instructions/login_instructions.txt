@@ -1,0 +1,226 @@
+===============================================================================
+ login_instructions — MODÜL 1 : LOGIN  (POST /api/login)
+===============================================================================
+Buraya main2_instructions.txt T2'den (SIRA 1) gelinir. Bu dosyanın adımları bitince
+main2_instructions.txt T2'ye dönülür; T3 kaydı orada atılır. Başka bir yere dallanma.
+
+KAPSANAN ENDPOINT
+  POST /api/login        (SecurityConfig'te permitAll; JWT istemeyen TEK endpoint)
+
+ÜRETTİĞİ ARTIFACT
+  target/jwt_admin.token   <- bundan sonraki BÜTÜN modüller bu dosyayı kullanır
+  target/login_admin.json  <- ham login cevabı (inceleme için durur)
+
+BU MODÜL target/jwt_user.token ÜRETMEZ. testuser1 henüz yoktur; onu modül 2
+(user_instructions.txt) oluşturur ve user token'ını da o üretir. Burada testuser1
+ile login denemesi YAPMA, 401 alırsın ve bu sahte bir hata olur.
+
+ÖN KOŞUL
+  - main2_instructions.txt T0 (T0a, T0b, T0c) geçmiş olmalı.
+  - users tablosunda user_id=1 (bozlak), admins tablosunda admin_id=1 satırı olmalı
+    (main_instructions_v2.txt Adım 4'ten gelir).
+
+BU MODÜLÜN DB DOĞRULAMASI NEDEN "SATIR OLUŞTU MU" DEĞİL
+Login veritabanına HİÇBİR satır yazmaz; log tablosu da yoktur (kodda login için bir
+log kaydı yok, T4b'deki beklenen sayılar da bunu varsayar). Bu yüzden modül sözleşmesi
+madde 4'teki "DB DOĞRULAMA" zorunluluğu burada iki şekilde karşılanır:
+  (1) YAN ETKİ YOK  : login sonrası tablo sayımları T0b ile birebir aynı kalmalı.
+  (2) İÇERİK TUTARLI: JWT içindeki userId / adminId claim'leri DB'deki users.user_id
+      ve admins.admin_id ile birebir aynı olmalı.
+(2) atlanırsa şu hata GÖRÜNMEZ: login 200 döner, token da geçerlidir ama içindeki
+adminId yanlıştır; hata modül 2'de "403 You are not Admin!" olarak patlar ve yanlış
+yerde aranır.
+
+TÜRKÇE KARAKTER NOTU
+Bu modül Türkçe karakter içeren bir alan YAZMAZ (kullanıcı adı/şifre ASCII). Bu yüzden
+[KALIP-5] kodlama doğrulaması bu modülde uygulanmaz. Türkçe karakter doğrulaması
+contact_type ve contact modüllerinin işidir.
+
+
+-------------------------------------------------------------------------------
+LOGIN.1  POZİTİF — admin login, token'ı dosyaya yaz
+-------------------------------------------------------------------------------
+KOMUT ([KALIP-1] birebir):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/login_admin.json -w "HTTP:%{http_code}\n" -X POST http://localhost:8080/api/login -H "Content-Type: application/json" -d "{\"username\":\"bozlak\",\"password\":\"bozlak\"}" && python3 -c "import json;print(json.load(open(\"target/login_admin.json\"))[\"object\"][\"jwtToken\"])" > target/jwt_admin.token && wc -c target/jwt_admin.token'
+
+BEKLENEN:
+  - İlk satır: HTTP:200   (LoginController HttpStatus.OK döner, 201 DEĞİL)
+  - Son satır: "<sayi> target/jwt_admin.token" ve <sayi> 150-300 arasında olmalı
+    (JWT ~170 bayt + sondaki newline). 0 veya 1 çıkarsa python3 token'ı yazamamıştır.
+  - python3 traceback'i (KeyError: 'object' gibi) geldiyse login başarısızdır -> [ON_ERROR].
+
+Cevap gövdesini gör:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && cat target/login_admin.json; echo'
+BEKLENEN: "success":true ve "object" içinde "jwtToken" alanı bulunmalı, ör:
+  {"success":true,"object":{"jwtToken":"eyJhbGciOiJIUzI1NiJ9...."}}
+Alan sırası önemli değil; "success":false veya "message" alanı geldiyse -> [ON_ERROR].
+
+DB DOĞRULAMA (login'in dayandığı satırlar duruyor mu):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT u.user_id, u.username, u.is_admin, a.admin_id, a.is_active FROM users u JOIN admins a ON a.user_id = u.user_id WHERE u.username = '\''bozlak'\'';"'
+BEKLENEN: tek satır ->  1|bozlak|t|1|t
+Satır gelmiyorsa veya id'ler farklıysa -> [ON_ERROR] (Adım 4 bozulmuş, token'daki
+claim'ler de yanlış olur).
+
+
+-------------------------------------------------------------------------------
+LOGIN.2  TOKEN İÇERİĞİ DB İLE TUTARLI MI (payload decode)
+-------------------------------------------------------------------------------
+Token'ın imzasını doğrulamıyoruz (secret bizde yok, gerek de yok: imzayı zaten
+uygulamanın kendisi modül 2'de her istekte doğrulayacak). Burada payload'ı okuyup
+claim'leri DB ile karşılaştırıyoruz.
+
+KOMUT:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && python3 -c "import base64,json;t=open(\"target/jwt_admin.token\").read().strip();parcalar=t.split(\".\");p=parcalar[1];p+=\"=\"*(-len(p)%4);c=json.loads(base64.urlsafe_b64decode(p));print(\"parca=\"+str(len(parcalar)),\"sub=\"+str(c[\"sub\"]),\"userId=\"+str(c[\"userId\"]),\"adminId=\"+str(c[\"adminId\"]),\"gun=\"+str((c[\"exp\"]-c[\"iat\"])//86400))"'
+
+BEKLENEN (tek satır):
+  parca=3 sub=bozlak userId=1 adminId=1 gun=30
+
+  parca=3   : JWT üç parçalıdır (header.payload.signature). Farklıysa dosyaya token
+              yerine başka bir şey yazılmıştır.
+  sub       : JwtServiceImpl.buildToken -> setSubject(userDetails.getUsername())
+  userId=1  : LoginServiceImpl extraClaims'e userId koyar.
+  adminId=1 : Kullanıcı admin OLMASAYDI bu değer -1 olurdu. -1 geliyorsa bozlak admin
+              sayılmamış demektir -> [ON_ERROR] (modül 2'deki add-user 403 verirdi).
+  gun=30    : setExpiration -> 1000*60*60*24*30 ms. Farklı bir sayı JWT ömrünün
+              değiştiği anlamına gelir; testin geri kalanını etkilemez ama sessizce
+              geçme, [ON_ERROR] ile bana bildir.
+
+DB DOĞRULAMA (claim'ler DB ile birebir aynı mı):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT u.user_id, a.admin_id FROM users u JOIN admins a ON a.user_id = u.user_id WHERE u.username = '\''bozlak'\'';"'
+BEKLENEN: 1|1        (psql -tA sütunları | ile ayırır, ilk alan user_id, ikincisi admin_id)
+Bu çıktı, üstteki komutun userId ve adminId değerleriyle AYNI olmalı. Tutmuyorsa
+-> [ON_ERROR]; sonraki bütün modüller yanlış kullanıcının adına iş yapar.
+
+
+-------------------------------------------------------------------------------
+LOGIN.3  LOGIN YAN ETKİ BIRAKMIYOR
+-------------------------------------------------------------------------------
+KOMUT (ana tablolar — T0b ile aynı sorgu):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT (SELECT count(*) FROM users), (SELECT count(*) FROM admins), (SELECT count(*) FROM contact_types), (SELECT count(*) FROM contacts), (SELECT count(*) FROM accounts), (SELECT count(*) FROM product_or_services);"'
+BEKLENEN: 1|1|0|0|0|0   (T0b ile birebir aynı)
+
+KOMUT (log tabloları):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT (SELECT count(*) FROM admin_activities_about_user), (SELECT count(*) FROM admin_activities_about_contact_type_created_or_deleted), (SELECT count(*) FROM user_himself_activities), (SELECT count(*) FROM user_contact_activities_created_or_deleted), (SELECT count(*) FROM user_account_create_or_delete_activities), (SELECT count(*) FROM product_or_service_create_or_delete_activities);"'
+BEKLENEN: 0|0|0|0|0|0
+
+DB DOĞRULAMA: iki sorgunun kendisi bu adımın DB doğrulamasıdır. Herhangi bir sayı
+arttıysa login sessizce bir kayıt yazıyor demektir -> [ON_ERROR]; T4a/T4b'nin beklenen
+sayıları da geçersiz hale gelir.
+
+
+-------------------------------------------------------------------------------
+LOGIN.4  NEGATİF — yanlış şifre (kimlik doğrulama, 401)
+-------------------------------------------------------------------------------
+KOMUT:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/last_response.json -w "HTTP:%{http_code}\n" -X POST http://localhost:8080/api/login -H "Content-Type: application/json" -d "{\"username\":\"bozlak\",\"password\":\"yanlisSifre123\"}"; echo "--- body ---"; cat target/last_response.json; echo'
+
+BEKLENEN:
+  - HTTP:401  (GlobalExceptionHandler.handleBadCredentialsException -> UNAUTHORIZED)
+  - Gövdede "success":false ve bir "message" alanı olmalı.
+  - message'ın Spring Security'den gelen varsayılan metni "Bad credentials"tır. Bu metin
+    JVM locale'ine göre çevrilmiş gelebilir; KRİTER HTTP 401 + "success":false'tır,
+    mesaj metnini tek başına kriter yapma.
+  - "jwtToken" KESİNLİKLE gelmemeli. Geldiyse -> [ON_ERROR] (yanlış şifreye token
+    veriliyor demektir; bu bir güvenlik hatasıdır, bana ayrıca haber ver).
+
+DB DOĞRULAMA (başarısız login de yan etki bırakmamalı):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT (SELECT count(*) FROM users), (SELECT count(*) FROM admins), (SELECT count(*) FROM user_himself_activities);"'
+BEKLENEN: 1|1|0
+
+LOG DOĞRULAMA (hangi yoldan reddedildiğini kanıtlar):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && grep -c "Threw BadCredentialsException" target/run.log'
+BEKLENEN: 1
+0 ise istek BadCredentials yolundan geçmemiştir (başka bir exception 401'e dönüşmüş
+olabilir) -> [ON_ERROR]. Bu satır WARN seviyesindedir, ERROR değildir; T4e'yi bozmaz.
+
+
+-------------------------------------------------------------------------------
+LOGIN.5  NEGATİF — olmayan kullanıcı (401, kullanıcı varlığı sızmamalı)
+-------------------------------------------------------------------------------
+KOMUT:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/last_response.json -w "HTTP:%{http_code}\n" -X POST http://localhost:8080/api/login -H "Content-Type: application/json" -d "{\"username\":\"olmayanKullanici\",\"password\":\"herhangi123\"}"; echo "--- body ---"; cat target/last_response.json; echo'
+
+BEKLENEN:
+  - HTTP:401 ve "success":false.
+  - Mesaj, LOGIN.4'tekiyle AYNI olmalı ("Bad credentials"). Amaç: cevap "böyle bir
+    kullanıcı yok" demiyor, yani kullanıcı adının var olup olmadığı sızmıyor.
+    (DaoAuthenticationProvider UsernameNotFoundException'ı BadCredentials'a çevirir.)
+  - HTTP:400 gelirse: projenin kendi UsernameNotFoundException'ı dışarı sızmış ve
+    kullanıcı varlığı ele veriliyor demektir -> [ON_ERROR], bana bildir.
+
+DB DOĞRULAMA:
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT count(*) FROM users;"'
+BEKLENEN: 1   (olmayan kullanıcı için kayıt AÇILMAMALI)
+
+LOG DOĞRULAMA:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && grep -c "Threw BadCredentialsException" target/run.log'
+BEKLENEN: 2   (LOGIN.4'ten 1 + bu adımdan 1)
+
+
+-------------------------------------------------------------------------------
+LOGIN.6  NEGATİF — boş şifre (validation, 400)
+-------------------------------------------------------------------------------
+LoginRequestDto'da username ve password @NotBlank + @NotNull'dır. Boş şifre servise
+hiç ulaşmadan MethodArgumentNotValidException ile reddedilmelidir.
+
+KOMUT:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/last_response.json -w "HTTP:%{http_code}\n" -X POST http://localhost:8080/api/login -H "Content-Type: application/json" -d "{\"username\":\"bozlak\",\"password\":\"\"}"; echo "--- body ---"; cat target/last_response.json; echo'
+
+BEKLENEN:
+  - HTTP:400 ve "success":false.
+  - message, doğrulayıcının ürettiği metindir (varsayılan: "must not be blank").
+    Metin locale'e göre değişebilir; KRİTER HTTP 400 + "success":false'tır.
+  - HTTP:401 gelirse validation çalışmamış, boş şifre kimlik doğrulamaya kadar
+    gitmiş demektir -> [ON_ERROR].
+
+DB DOĞRULAMA:
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT (SELECT count(*) FROM users), (SELECT count(*) FROM user_himself_activities);"'
+BEKLENEN: 1|0
+
+LOG DOĞRULAMA:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && grep -c "Threw validation exception" target/run.log'
+BEKLENEN: 1
+Ayrıca BadCredentials sayısı ARTMAMALI (hâlâ 2 olmalı); yani istek servise ulaşmamıştır.
+
+
+-------------------------------------------------------------------------------
+LOGIN.7  MODÜL SONU KONTROLÜ — token bozulmadı, log temiz
+-------------------------------------------------------------------------------
+Negatif testler target/last_response.json'a yazar; target/jwt_admin.token'a DOKUNMAZ.
+Sonraki modüllerin tamamı bu dosyaya bağlı olduğu için bittiğini burada teyit ediyoruz.
+
+KOMUT (token hâlâ okunabilir ve doğru kullanıcıya ait mi):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && wc -c target/jwt_admin.token && python3 -c "import base64,json;t=open(\"target/jwt_admin.token\").read().strip();p=t.split(\".\")[1];p+=\"=\"*(-len(p)%4);c=json.loads(base64.urlsafe_b64decode(p));print(\"sub=\"+str(c[\"sub\"]),\"userId=\"+str(c[\"userId\"]),\"adminId=\"+str(c[\"adminId\"]))"'
+BEKLENEN: LOGIN.1'deki bayt sayısının AYNISI ve  sub=bozlak userId=1 adminId=1
+
+KOMUT (uygulama logunda ERROR var mı):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && grep -nE "Unexpected system error|Unexpected Backend Error|ERROR" target/run.log | head -20; echo TARAMA_BITTI'
+BEKLENEN: sadece "TARAMA_BITTI".
+Bu modülün negatif testleri WARN üretir, ERROR üretmez. ERROR satırı geldiyse
+login yolunda beklenmeyen bir exception 500'e düşmüş demektir -> [ON_ERROR].
+(Bu kontrol T4e'nin aynısıdır; burada erken yapılır ki hata 6 modül sonra değil
+kaynağında yakalansın.)
+
+DB DOĞRULAMA (modül sonu durumu, bir sonraki modülün ön koşulu):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT (SELECT count(*) FROM users), (SELECT count(*) FROM admins), (SELECT count(*) FROM contact_types), (SELECT count(*) FROM contacts), (SELECT count(*) FROM accounts), (SELECT count(*) FROM product_or_services);"'
+BEKLENEN: 1|1|0|0|0|0   (giriştekiyle aynı; login modülü DB'yi değiştirmez)
+
+
+-------------------------------------------------------------------------------
+MODÜL BİTİŞİ
+-------------------------------------------------------------------------------
+LOGIN.1 - LOGIN.7 arasındaki her adım Beklenen sonucu verdiyse bu modül GECTI'dir.
+Bir adım bile tutmadıysa sonraki modüle GEÇME -> [ON_ERROR]
+(HATA ADIMI alanı: "main2 / login_instructions.txt / LOGIN.<n>").
+
+main2_instructions.txt T2'ye dön. T3 kaydını (1 login_instructions.txt GECTI ...)
+orada at ve sıradaki modüle (user_instructions.txt) geç.
+
+
+======================================================================================
+ NOT : Claude Code, Opus 5 (Extra) ile yazıldı. Bağlı dosyalar: main2_instructions.txt (T1
+ kalıpları ve sabit test verileri), main_instructions_v2.txt ([ON_ERROR] / [CLEANUP]).
+ Doğrulandığı kaynak kod: login/api/LoginController.java, login/service/LoginServiceImpl.java,
+ login/dtos/LoginRequestDto.java, security/JwtServiceImpl.java, security/SecurityConfig.java,
+ utils/GlobalExceptionHandler.java
+======================================================================================
