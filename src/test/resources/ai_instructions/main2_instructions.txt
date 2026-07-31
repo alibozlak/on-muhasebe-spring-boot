@@ -170,7 +170,7 @@ Bütün modül dosyaları bu dosyayla aynı dizindedir:
 
 SIRA | DOSYA                             | DURUM | ÖN KOŞUL | ÜRETTİĞİ ARTIFACT
 -----+-----------------------------------+-------+----------+---------------------------
-  1  | login_instructions.txt            | PASIF | T0       | target/jwt_admin.token
+  1  | login_instructions.txt            | AKTIF | T0       | target/jwt_admin.token
   2  | user_instructions.txt             | PASIF | 1        | user_id=2, target/jwt_user.token
   3  | contact_type_instructions.txt     | PASIF | 1        | contact_type_id=1
   4  | contact_instructions.txt          | PASIF | 2, 3     | contact_id=1
