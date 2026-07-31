@@ -99,7 +99,17 @@ IDENTITY sayacı 1'den başlamaz ve admins tablosundaki foreign key patlar.
 2. UYGULAMAYI BAŞLAT
 -------------------------------------------------------------------------------
 2a. Arka planda başlat, PID'i kaydet, tüm logları target/run.log'a yaz:
-  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot || exit 1; mkdir -p target; nohup mvn spring-boot:run > target/run.log 2>&1 & echo $! > target/app.pid; sleep 2; cat target/app.pid'
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot || exit 1; mkdir -p target; nohup mvn -B spring-boot:run > target/run.log 2>&1 & echo $! > target/app.pid; sleep 2; cat target/app.pid'
+
+'-B' (batch mode) neden var, silme:
+- Maven'ın ANSI renk kodlarını kapatır. Onsuz run.log'un baştaki Maven satırları
+  "ESC[1;34mINFO ESC[m" gibi escape dizileriyle doğar; bu kirlilik cat ile infos.txt ve
+  errors.txt'e de aynen kopyalanır ve raporlar okunmaz hale gelir.
+  (ÖLÇÜLDÜ, tahmin değil: 'mvn -B validate' çıktısında tek bir ESC baytı yok;
+   bayraksız halde run.log'un ilk 26 satırının hepsinde ESC vardı.)
+- Ayrıca dependency indirme ilerleme çubuğunu susturur, log kısalır.
+- [CLEANUP] adım 5'teki 'pgrep -fa "spring-boot:run"' kalıbını BOZMAZ: süreç komut satırı
+  'mvn -B spring-boot:run' olur, aranan alt dize hâlâ içindedir.
 
 2b. Başlamayı bekle (5 saniyede bir kontrol, en fazla 240 saniye):
   wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && for i in $(seq 1 48); do if grep -q "Started OnMuhasebeSpringBootApplication in" target/run.log; then echo HAZIR; exit 0; fi; if grep -qE "BUILD FAILURE|APPLICATION FAILED TO START|Error starting ApplicationContext" target/run.log; then echo BASLATMA_HATASI; exit 1; fi; sleep 5; done; echo TIMEOUT; exit 1'
