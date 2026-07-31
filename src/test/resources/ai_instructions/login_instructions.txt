@@ -46,14 +46,19 @@ KOMUT ([KALIP-1] birebir):
 BEKLENEN:
   - İlk satır: HTTP:200   (LoginController HttpStatus.OK döner, 201 DEĞİL)
   - Son satır: "<sayi> target/jwt_admin.token" ve <sayi> 150-300 arasında olmalı
-    (JWT ~170 bayt + sondaki newline). 0 veya 1 çıkarsa python3 token'ı yazamamıştır.
+    (ÖLÇÜLDÜ, tahmin değil: 185 = JWT 184 bayt + sondaki newline; .env'deki üretim
+    anahtarıyla, yani HS384 imzayla). 0 veya 1 çıkarsa python3 token'ı yazamamıştır.
   - python3 traceback'i (KeyError: 'object' gibi) geldiyse login başarısızdır -> [ON_ERROR].
 
 Cevap gövdesini gör:
   wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && cat target/login_admin.json; echo'
 BEKLENEN: "success":true ve "object" içinde "jwtToken" alanı bulunmalı, ör:
-  {"success":true,"object":{"jwtToken":"eyJhbGciOiJIUzI1NiJ9...."}}
+  {"success":true,"object":{"jwtToken":"eyJhbGciOiJIUzM4NCJ9...."}}
 Alan sırası önemli değil; "success":false veya "message" alanı geldiyse -> [ON_ERROR].
+İmza algoritması jwt.secret'ın çözülmüş uzunluğuna göre seçilir (>=384 bit -> HS384,
+256-383 bit -> HS256). .env'deki üretim anahtarı 384 bit olduğu için header HS384'tür;
+src/test/resources'taki test anahtarı 288 bit olduğundan orada HS256 görürsün. Bu bir
+kriter DEĞİLDİR, sadece header'ı görünce şaşırma diye yazıldı.
 
 DB DOĞRULAMA (login'in dayandığı satırlar duruyor mu):
   wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT u.user_id, u.username, u.is_admin, a.admin_id, a.is_active FROM users u JOIN admins a ON a.user_id = u.user_id WHERE u.username = '\''bozlak'\'';"'
@@ -77,13 +82,13 @@ BEKLENEN (tek satır):
 
   parca=3   : JWT üç parçalıdır (header.payload.signature). Farklıysa dosyaya token
               yerine başka bir şey yazılmıştır.
-  sub       : JwtServiceImpl.buildToken -> setSubject(userDetails.getUsername())
+  sub       : JwtServiceImpl.buildToken -> JwtClaimsSet.builder().subject(userDetails.getUsername())
   userId=1  : LoginServiceImpl extraClaims'e userId koyar.
   adminId=1 : Kullanıcı admin OLMASAYDI bu değer -1 olurdu. -1 geliyorsa bozlak admin
               sayılmamış demektir -> [ON_ERROR] (modül 2'deki add-user 403 verirdi).
-  gun=30    : setExpiration -> 1000*60*60*24*30 ms. Farklı bir sayı JWT ömrünün
-              değiştiği anlamına gelir; testin geri kalanını etkilemez ama sessizce
-              geçme, [ON_ERROR] ile bana bildir.
+  gun=30    : JwtServiceImpl.TOKEN_VALIDITY -> Duration.ofDays(30). Farklı bir sayı JWT
+              ömrünün değiştiği anlamına gelir; testin geri kalanını etkilemez ama
+              sessizce geçme, [ON_ERROR] ile bana bildir.
 
 DB DOĞRULAMA (claim'ler DB ile birebir aynı mı):
   wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT u.user_id, a.admin_id FROM users u JOIN admins a ON a.user_id = u.user_id WHERE u.username = '\''bozlak'\'';"'
@@ -223,4 +228,10 @@ orada at ve sıradaki modüle (user_instructions.txt) geç.
  Doğrulandığı kaynak kod: login/api/LoginController.java, login/service/LoginServiceImpl.java,
  login/dtos/LoginRequestDto.java, security/JwtServiceImpl.java, security/SecurityConfig.java,
  utils/GlobalExceptionHandler.java
+
+ 31 Temmuz 2026 (native_image_friendly branch): JwtServiceImpl jjwt 0.11.5'ten Nimbus'a
+ (spring-security-oauth2-jose) taşındı. Token'ın YAPISI değişmedi — header yine yalnızca
+ {"alg":...}, claim'ler yine tam olarak [sub, iat, exp, userId, adminId]. LOGIN.1-LOGIN.7
+ canlı uygulamada yeniden koşuldu ve hepsi geçti; bu dosyadaki kod referansları ile
+ ölçülmüş bayt sayısı o koşuma göre güncellendi.
 ======================================================================================
