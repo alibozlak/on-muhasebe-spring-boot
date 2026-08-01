@@ -20,7 +20,7 @@ public class UserAccountCreateOrDeleteActivity {
     public Boolean isActivityCreate;
 
     @Column("account_id")
-    public Long accountId;  // FK in DB
+    public Long accountId;  // Logical ref to accounts.account_id; no FK constraint in the DB
 
     @Column("created_at")
     public java.time.LocalDate createdLogDate;

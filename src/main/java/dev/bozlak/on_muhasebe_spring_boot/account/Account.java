@@ -21,7 +21,9 @@ public class Account {
     private Long accountId;
 
     /**
-     * FK in DB only. Spring Data JDBC has no @JoinColumn equivalent by design.
+     * Logical reference to users.user_id. Nothing enforces it: the DB declares no FK
+     * constraint (see README.md) and Spring Data JDBC has no @JoinColumn equivalent by
+     * design.
      */
     @Column("user_id")
     private Integer userId;

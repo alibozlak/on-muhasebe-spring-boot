@@ -95,6 +95,14 @@ Bu modül user_himself_activities tablosuna TOPLAM 3 satır yazar:
 main2 T4b'deki "user_self" beklentisi bu modül AKTIF yapıldığında 3 olmalıdır, T4c'de de
 bu üç satır beklenir. Modül PASIF olduğu sürece T4b/T4c için beklenen değer 0'dır.
 
+FK YOK — ID KONTROLLERİ BU YÜZDEN ELLE YAPILIYOR
+Bu projede RDBMS seviyesinde foreign key constraint YOKTUR (üretim veritabanı dahil; bkz.
+README.md). Yani user_himself_activities.user_id olmayan bir kullanıcıyı gösterse bile
+veritabanı bunu REDDETMEZ, sessizce kaydeder. Bu yüzden buradaki DB doğrulamaları satır
+SAYMAKLA yetinmez, satırın hangi user_id'ye ait olduğunu da sorar (USER.2, USER.7, USER.12).
+Aynı sebeple USER.12, admin satırının (user_id=1) değişmediğini ayrıca kontrol eder: yanlış
+satırı güncelleyen bir hata hiçbir constraint'e takılmaz, tek yakalanma yeri bu adımdır.
+
 TÜRKÇE KARAKTER NOTU
 Bu modül Türkçe karakter içeren bir alan YAZMAZ (kullanıcı adları ve şifreler ASCII'dir).
 Bu yüzden [KALIP-5] kodlama doğrulaması burada uygulanmaz; o doğrulama contact_type ve

@@ -93,9 +93,10 @@ Container zaten varsa (önceki koşudan kalmış):
   wsl -e bash -lc 'docker rm -f pre_accounting_db && docker ps -a --filter name=pre_accounting_db'
 Bu şart önemli: Adım 4'teki SQL'ler user_id=1 / admin_id=1 varsayıyor. Eski veri kalırsa
 IDENTITY sayacı 1'den başlamaz ve admins.user_id yanlış bir users satırını gösterir.
-Bu artık GÜRÜLTÜSÜZ bozulur: Adım 3b'nin şeması foreign key TANIMLAMAZ (testlerin yazdığı
-karşılıksız satırlarla uyumlu olsun diye), yani hata almazsın, sessizce tutarsız veri
-üretirsin. Container'ı silmek bu yüzden şart.
+Bu GÜRÜLTÜSÜZ bozulur: ne Adım 3b'nin şeması ne de üretim veritabanı foreign key TANIMLAR
+(proje kararı; bkz. README.md), yani RDBMS karşılıksız satırı reddetmez. Hata almazsın,
+sessizce tutarsız veri üretirsin. Bağların doğruluğunu yalnızca uygulama ve bu pipeline'ın
+DB doğrulama adımları kontrol eder. Container'ı silmek bu yüzden şart.
 
 
 -------------------------------------------------------------------------------

@@ -3,9 +3,15 @@
 -- Until now the integration tests got their schema from Hibernate's
 -- spring.jpa.hibernate.ddl-auto=create-drop. Spring Data JDBC does not generate DDL, so
 -- the schema is now explicit. It is derived from the entity classes and therefore mirrors
--- what Hibernate used to create, including the absence of foreign keys: the existing tests
--- insert rows such as contacts.user_id = 12 without a matching users row, which a schema
--- with real FK constraints would reject.
+-- what Hibernate used to create.
+--
+-- No FOREIGN KEY here, and that is not a test concession: this project declares no foreign
+-- key constraints on the RDBMS side at all, production included (see README.md). Columns
+-- like contacts.user_id are logical references the application keeps valid; the database
+-- accepts whatever it is given. That is also why the existing tests can insert rows such
+-- as contacts.user_id = 12 with no matching users row. Adding constraints here would make
+-- this file stricter than the database it stands in for - so if you are tempted, fix the
+-- production DDL first.
 --
 -- This project is DB-First, so the production database - not this file - is the source of
 -- truth. Replace this with a dump of the real schema when convenient:

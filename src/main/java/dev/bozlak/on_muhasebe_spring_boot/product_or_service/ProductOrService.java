@@ -14,7 +14,7 @@ public class ProductOrService {
     @Column("product_or_service_id")
     public Long productOrServiceId;
 
-    @Column("user_id") // <-- DB side: Foreign Key, not here. Don't use @JoinColumn.
+    @Column("user_id") // <-- Logical ref to users.user_id: no FK in the DB, no @JoinColumn here.
     public Integer userId;
 
     @Column("product_or_service_code")

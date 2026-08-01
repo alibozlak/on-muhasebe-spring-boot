@@ -20,7 +20,8 @@ public class AdminActivityAboutUser {
     private Long adminActivityAboutUserId;
 
     /**
-     * FK to admins.admin_id. Was a lazy @ManyToOne to Admin; only the id was ever read.
+     * Logical reference to admins.admin_id; no FK constraint backs it (see README.md).
+     * Was a lazy @ManyToOne to Admin; only the id was ever read.
      */
     @Column("admin_id")
     private Short adminId;
@@ -29,7 +30,8 @@ public class AdminActivityAboutUser {
     private String adminActivityType;
 
     /**
-     * FK to users.user_id. Was a lazy @ManyToOne to User; only the id was ever read.
+     * Logical reference to users.user_id; no FK constraint backs it either.
+     * Was a lazy @ManyToOne to User; only the id was ever read.
      */
     @Column("user_id")
     private Integer userId;

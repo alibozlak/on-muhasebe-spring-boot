@@ -6,7 +6,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;
 
 /**
- * adminId and userId now map straight across: the entity holds the FK columns itself
+ * adminId and userId now map straight across: the entity holds the id columns itself
  * instead of nested Admin/User associations, so no @Mapping overrides are needed.
  */
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
