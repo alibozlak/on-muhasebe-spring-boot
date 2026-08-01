@@ -1,0 +1,375 @@
+===============================================================================
+ user_instructions — MODÜL 2 : USER  /  change-password bölümü
+                     (PUT /api/v1/users/change-password)
+===============================================================================
+Buraya main2_instructions.txt T2'den (SIRA 2) gelinir. Bu dosyanın adımları bitince
+main2_instructions.txt T2'ye dönülür; T3 kaydı orada atılır. Başka bir yere dallanma.
+
+
+-------------------------------------------------------------------------------
+ BU DOSYANIN DURUMU — ÖNCE BUNU OKU
+-------------------------------------------------------------------------------
+Modül 2, main2 T2'ye göre üç endpoint çağrısını kapsar. Adım numaraları şöyle ayrıldı:
+
+  USER.1          POST /api/v1/users/add-user   (admin token -> 201)   [HENÜZ YAZILMADI]
+  USER.2          POST /api/login  (testuser1)  -> target/jwt_user.token
+                                                                       [HENÜZ YAZILMADI]
+  USER.3          POST /api/v1/users/add-user   (user token  -> 403)   [HENÜZ YAZILMADI]
+  USER.4 - USER.10  PUT /api/v1/users/change-password (user token -> 200)
+                                                                       [BU DOSYADA]
+
+Yani bu dosya şu an SADECE change-password bölümünü tanımlar; USER.1-USER.3 add-user
+bölümü için AYRILMIŞTIR. Bunun iki pratik sonucu var:
+
+  1) main2 T2'de modül 2'nin DURUM sütunu PASIF KALMALIDIR. AKTIF yapma. change-password
+     testinin ön koşulu olan testuser1 kullanıcısını ve target/jwt_user.token dosyasını
+     USER.1-USER.2 üretir; onlar yazılmadan bu bölüm tek başına koşamaz (jwt_user.token
+     yoktur, users tablosunda user_id=2 yoktur).
+  2) add-user bölümü yazıldığında bu dosyanın başına USER.1-USER.3 olarak eklenir,
+     buradaki numaralar DEĞİŞMEZ ve o zaman T2'deki DURUM AKTIF yapılır.
+
+Bu bölümü add-user bölümü olmadan çalıştırmayı deneme; ön koşulu sağlanmamış bir test
+"kırmızı" verir ve bu SAHTE bir hatadır -> main2 T2 (a) maddesi: PASIF modül ATLANIR.
+
+
+KAPSANAN ENDPOINT
+  PUT /api/v1/users/change-password   (JWT zorunlu; admin olmak gerekmez — UserController
+                                       bu metotta adminId'ye BAKMAZ, sadece userId ister)
+
+KULLANDIĞI ARTIFACT (kendisi üretmez, tüketir)
+  target/jwt_user.token    <- USER.2 üretir (user_id=2, testuser1, adminId=-1)
+
+ÜRETTİĞİ ARTIFACT
+  target/last_response.json  <- her çağrının ham cevabı (üzerine yazılır)
+  target/login_user.json     <- USER.6'daki doğrulama login'inin ham cevabı
+
+BU BÖLÜM target/jwt_user.token DOSYASINI DEĞİŞTİRMEZ. Şifre değişse bile eldeki token
+geçerli kalır (JwtServiceImpl.isTokenValid yalnızca exp'e ve subject == username'e bakar;
+şifre token doğrulamasının parçası değildir). Modül 4 (contact) ve modül 6 (product) bu
+dosyayı change-password'den SONRA kullanacağı için token'ı tazelemiyoruz: dosyayı olduğu
+gibi bırakmak, o modüllerin davranışını bu modülün sırasına bağlı olmaktan çıkarır.
+
+ÖN KOŞUL
+  - main2_instructions.txt T0 (T0a, T0b, T0c) geçmiş olmalı.
+  - Modül 1 (login_instructions.txt) GECTI olmalı.
+  - USER.1 çalışmış olmalı: users tablosunda user_id=2 / testuser1 satırı, şifresi
+    T1'deki sabit değer (Test1234!).
+  - USER.2 çalışmış olmalı: target/jwt_user.token dosyası dolu olmalı.
+  - user_himself_activities tablosu BOŞ olmalı (bu bölümden önce hiçbir modül bu tabloya
+    yazmaz; T4b'nin beklediği user_self=1 sayısını tam olarak bu bölüm üretir).
+
+TÜRKÇE KARAKTER NOTU
+Bu bölüm Türkçe karakter içeren bir alan YAZMAZ (kullanıcı adı ve şifreler ASCII'dir).
+Bu yüzden [KALIP-5] kodlama doğrulaması burada uygulanmaz; o doğrulama contact_type ve
+contact modüllerinin işidir.
+
+ÜNLEM İŞARETİ (!) NOTU — şifreler "Test1234!" ve "Test5678!"
+Komutlarda ünlem işaretini kaçırmana (\!) GEREK YOK ve kaçırma. History expansion sadece
+INTERAKTİF bash'te açıktır; buradaki komutlar 'bash -lc' ile, yani interaktif olmayan bir
+kabukta çalışır. Ters bölü eklersen şifre "Test1234\!" olarak gider ve test yanlış yere
+patlar (401/403 alırsın ama sebebi endpoint değil, kabuğun yazdığı fazladan karakterdir).
+
+LOG SAYIMLARI NEDEN "DELTA" ÖLÇÜLÜYOR
+"Threw BadCredentialsException" ve "Threw validation exception(s)" satırlarını login modülü
+de üretiyor (LOGIN.4, LOGIN.5, LOGIN.6). Bu yüzden bu bölümde MUTLAK sayı beklentisi
+yazılmadı: ilgili adımda önce sayıyı ölç, isteği at, tekrar ölç ve "bir artmış olmalı"
+kriterini uygula. Böylece USER.1-USER.3 yazıldığında (ve orada da login/validation hatası
+üretildiğinde) bu dosyadaki beklentiler geçersiz hale gelmez.
+"Threw PasswordIncorrectException" satırı için mutlak sayı kullanılır: bu exception'ı
+kodda SADECE UserServiceImpl.changePassword atar, yani onu üretebilecek tek yer burasıdır.
+
+
+-------------------------------------------------------------------------------
+USER.4  ÖN DURUM — değişmeden önceki fotoğrafı çek (sonraki adımlar buna kıyaslanır)
+-------------------------------------------------------------------------------
+Bu adım bir "test" değil, ölçüm noktasıdır: şifre hash'inin değiştiğini kanıtlamanın tek
+yolu, değişmeden önceki değeri elde tutmaktır. Hash'in kendisini karşılaştırma; 60 karakter
+uzunluğunda ve göz kararı ayırt etmesi zor bir dizidir. md5'ini karşılaştır.
+
+KOMUT (kullanıcı satırı):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT user_id, username, is_active, is_admin, md5(hashed_password), left(hashed_password,7), length(hashed_password) FROM users WHERE user_id = 2;"'
+
+BEKLENEN: tek satır ->  2|testuser1|t|f|<MD5_ONCE>|$2a$10$|60
+  <MD5_ONCE>  : 32 haneli hex. Bu değeri NOT AL; USER.5, USER.7, USER.8 ve USER.9 bunu
+                kullanacak. (Değeri buraya yazamıyorum: BCrypt her hash'te rastgele bir
+                salt kullanır, yani her koşuda farklı çıkar. Sabit olan şey formattır.)
+  $2a$10$     : BCryptPasswordEncoder varsayılanı (OnMuhasebeSpringBootApplication'daki
+                PasswordEncoder bean'i). Prefix veya uzunluk farklıysa şifre hash'lenmeden
+                yazılmış olabilir -> [ON_ERROR], bu bir güvenlik hatasıdır, bana bildir.
+  is_active=t : getHashedPasswordByUserId sorgusu "AND is_active = true" içerir; kullanıcı
+                pasifse change-password UserIdNotFoundException (400) verir, 403 değil.
+Satır hiç gelmiyorsa USER.1 çalışmamıştır -> [ON_ERROR] (ön koşul eksik).
+
+KOMUT (log tablosu boş mu):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT count(*) FROM user_himself_activities;"'
+BEKLENEN: 0
+0 değilse bu tabloya başka bir yerden kayıt düşmüş demektir; USER.5'in "1 satır oluştu"
+kriteri anlamsızlaşır -> [ON_ERROR].
+
+KOMUT (ön koşul artifact'i gerçekten testuser1'e mi ait):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && wc -c target/jwt_user.token && python3 -c "import base64,json;t=open(\"target/jwt_user.token\").read().strip();p=t.split(\".\")[1];p+=\"=\"*(-len(p)%4);c=json.loads(base64.urlsafe_b64decode(p));print(\"sub=\"+str(c[\"sub\"]),\"userId=\"+str(c[\"userId\"]),\"adminId=\"+str(c[\"adminId\"]))"'
+BEKLENEN:
+  - Bayt sayısı 150-300 arasında (login_instructions LOGIN.1'deki ölçümle aynı mertebede).
+  - sub=testuser1 userId=2 adminId=-1
+  adminId=-1 doğrudur ve ÖNEMLİDİR: testuser1 admin değildir (LoginServiceImpl admin
+  olmayan kullanıcı için adminId'yi -1 olarak koyar). Burada 1 görüyorsan elindeki dosya
+  admin token'ıdır; o zaman change-password user_id=1'in (bozlak'ın) şifresini değiştirir
+  ve T4c'deki "user_id=2" beklentisi tutmaz -> [ON_ERROR].
+
+
+-------------------------------------------------------------------------------
+USER.5  POZİTİF — şifre değiştir (user token -> 200)
+-------------------------------------------------------------------------------
+KOMUT ([KALIP-2], metot PUT):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/last_response.json -w "HTTP:%{http_code}\n" -X PUT "http://localhost:8080/api/v1/users/change-password" -H "Authorization: Bearer $(cat target/jwt_user.token)" -H "Content-Type: application/json" -d "{\"currentPassword\":\"Test1234!\",\"newPassword\":\"Test5678!\"}"; echo "--- body ---"; cat target/last_response.json; echo'
+
+BEKLENEN:
+  - HTTP:200   (UserController.changePassword HttpStatus.OK döner. 201 DEĞİL; add-user
+                201 döner, bu ikisini karıştırma.)
+  - Gövde: {"success":true}
+  - "message" alanı GELMEMELİ. Geldiyse cevap ResponseBodyWithMessage'dır, yani hata
+    yolundan dönülmüştür -> [ON_ERROR].
+
+DB DOĞRULAMA (hash gerçekten değişti mi):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT user_id, md5(hashed_password), left(hashed_password,7), length(hashed_password) FROM users WHERE user_id = 2;"'
+BEKLENEN: tek satır ->  2|<MD5_SONRA>|$2a$10$|60
+  <MD5_SONRA>, USER.4'te not aldığın <MD5_ONCE> ile AYNI OLMAMALI. Bu değeri de not al;
+  USER.7, USER.8 ve USER.9 "hash değişmedi" kontrolünü buna göre yapacak.
+  Aynı çıkarsa: HTTP 200 dönmüş ama UPDATE veritabanına ulaşmamıştır -> [ON_ERROR].
+  Sadece HTTP koduna bakınca GÖRÜNMEYEN hata tam olarak budur.
+  Prefix ve uzunluk aynı kalmalı (yeni şifre de BCrypt ile hash'lenir).
+
+LOG TABLOSU DOĞRULAMASI (@Transactional akışı bozulmadı mı):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -c "SELECT user_himself_activity_id, user_id, activity_type_name, created_at FROM user_himself_activities;"'
+BEKLENEN: tek satır -> user_himself_activity_id=1, user_id=2,
+          activity_type_name=USER_CHANGED_PASSWORD, created_at = BUGÜNÜN TARİHİ
+  Tablo boşsa: şifre değişti ama log yazılmadı; UserServiceImpl.changePassword içindeki
+  userActivityService.addUserHimselfActivity çağrısı akıştan düşmüş demektir -> [ON_ERROR].
+  T4b'nin user_self=1 beklentisi de buradan gelir.
+
+  Tarih kontrolünü göz kararı yapma, veritabanına sordur:
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT count(*) FROM user_himself_activities WHERE user_id = 2 AND activity_type_name = '\''USER_CHANGED_PASSWORD'\'' AND created_at = CURRENT_DATE;"'
+  BEKLENEN: 1     (tırnak kuralı için main2 [KALIP-5]'e bak: '\'' kullanılır, '' değil)
+
+DB DOĞRULAMA (yan etki yok):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT (SELECT count(*) FROM users), (SELECT count(*) FROM admins), (SELECT count(*) FROM user_himself_activities), (SELECT count(*) FROM admin_activities_about_user);"'
+BEKLENEN: 2|1|1|1
+  users=2      : change-password kullanıcı EKLEMEZ, sadece günceller.
+  admins=1     : değişmez.
+  user_self=1  : bu adımın ürettiği tek log satırı.
+  adm_user=1   : USER.1'in (add-user) ürettiği satır; bu adım ona dokunmaz.
+
+
+-------------------------------------------------------------------------------
+USER.6  FONKSİYONEL DOĞRULAMA — yeni şifre çalışıyor, eski şifre çalışmıyor
+-------------------------------------------------------------------------------
+Hash'in DEĞİŞMİŞ olması, "yeni şifrenin hash'i yazıldı" demek değildir; rastgele bir değer
+yazılmış da olabilir. Bunu SQL ile kanıtlayamayız (BCrypt'i psql'de yeniden hesaplamak
+gerekirdi). Kanıtı uygulamanın kendisine ürettiriyoruz: yeni şifreyle login OLMALI, eski
+şifreyle OLMAMALI.
+
+KOMUT (a — yeni şifre ile login):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/login_user.json -w "HTTP:%{http_code}\n" -X POST http://localhost:8080/api/login -H "Content-Type: application/json" -d "{\"username\":\"testuser1\",\"password\":\"Test5678!\"}"; echo "--- body ---"; cat target/login_user.json; echo'
+BEKLENEN:
+  - HTTP:200 ve gövdede "success":true, "object" içinde "jwtToken".
+  - HTTP:401 gelirse: USER.5 hash'i değiştirmiş ama YENİ ŞİFRENİN hash'ini yazmamıştır
+    -> [ON_ERROR]. (Bu, USER.5'i tek başına "geçti" saymanın neden yetmediğinin kanıtıdır.)
+
+KOMUT (a2 — dönen token'ın claim'leri):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && python3 -c "import base64,json;t=json.load(open(\"target/login_user.json\"))[\"object\"][\"jwtToken\"];p=t.split(\".\")[1];p+=\"=\"*(-len(p)%4);c=json.loads(base64.urlsafe_b64decode(p));print(\"sub=\"+str(c[\"sub\"]),\"userId=\"+str(c[\"userId\"]),\"adminId=\"+str(c[\"adminId\"]))"'
+BEKLENEN: sub=testuser1 userId=2 adminId=-1
+  Şifre değişikliği kullanıcının kimliğini veya yetkisini DEĞİŞTİRMEZ; claim'ler USER.4'te
+  okuduklarının aynısı olmalı. adminId burada 1 çıkıyorsa şifre değiştirme sırasında
+  kullanıcı yanlışlıkla admin yapılmıştır -> [ON_ERROR], bana ayrıca haber ver.
+
+KOMUT (b — ESKİ şifre ile login, delta ölçümlü):
+  Önce mevcut sayıyı ölç:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && grep -c "Threw BadCredentialsException" target/run.log'
+  Bu sayıyı <BC_ONCE> olarak not al (login modülü de bu satırı üretir, bu yüzden mutlak
+  sayı beklentisi yazılmıyor).
+
+  Sonra isteği at:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/last_response.json -w "HTTP:%{http_code}\n" -X POST http://localhost:8080/api/login -H "Content-Type: application/json" -d "{\"username\":\"testuser1\",\"password\":\"Test1234!\"}"; echo "--- body ---"; cat target/last_response.json; echo'
+BEKLENEN:
+  - HTTP:401 ve gövdede "success":false.
+  - "jwtToken" KESİNLİKLE gelmemeli. Geldiyse eski şifre hâlâ geçerlidir; şifre değişmemiş
+    ya da eski hash bir yerde durmaktadır -> [ON_ERROR], bu bir güvenlik hatasıdır.
+  - Mesaj metni ("Bad credentials") locale'e göre değişebilir; KRİTER HTTP 401 +
+    "success":false'tır (login_instructions LOGIN.4 ile aynı gerekçe).
+
+  Sonra sayıyı tekrar ölç:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && grep -c "Threw BadCredentialsException" target/run.log'
+BEKLENEN: <BC_ONCE> + 1
+  Artmadıysa istek BadCredentials yolundan geçmemiştir (401'i başka bir şey üretmiştir)
+  -> [ON_ERROR]. Bu satır WARN seviyesindedir, ERROR değildir; T4e'yi bozmaz.
+
+DB DOĞRULAMA (login yan etki bırakmaz):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT (SELECT count(*) FROM users), (SELECT count(*) FROM user_himself_activities), (SELECT md5(hashed_password) FROM users WHERE user_id = 2);"'
+BEKLENEN: 2|1|<MD5_SONRA>
+  Başarılı da olsa başarısız da olsa login hiçbir tabloya yazmaz ve şifreyi değiştirmez.
+  <MD5_SONRA> USER.5'te not aldığın değerdir.
+
+
+-------------------------------------------------------------------------------
+USER.7  NEGATİF — yanlış currentPassword (403, PasswordIncorrectException)
+-------------------------------------------------------------------------------
+Artık geçerli şifre Test5678!'dir. Aşağıdaki istek currentPassword olarak ESKİ şifreyi
+gönderir; yani "doğru kullanıcı, yanlış mevcut şifre" senaryosudur.
+
+KOMUT:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/last_response.json -w "HTTP:%{http_code}\n" -X PUT "http://localhost:8080/api/v1/users/change-password" -H "Authorization: Bearer $(cat target/jwt_user.token)" -H "Content-Type: application/json" -d "{\"currentPassword\":\"Test1234!\",\"newPassword\":\"Test5678!\"}"; echo "--- body ---"; cat target/last_response.json; echo'
+
+BEKLENEN:
+  - HTTP:403   (GlobalExceptionHandler.handlePasswordIncorrectException -> FORBIDDEN.
+                401 DEĞİL: istek kimliği doğrulanmış bir kullanıcıdan geliyor, reddedilen
+                şey işlemin kendisidir.)
+  - Gövde: "success":false ve "message":"Password is incorrect!!"
+    (Bu metin PasswordIncorrectException'ın kendi sabitidir, Spring'den gelmez; yani
+    locale'den etkilenmez ve kriterin parçasıdır.)
+  - HTTP:200 gelirse: yanlış mevcut şifreyle şifre değiştirilebiliyor demektir
+    -> [ON_ERROR], bu bir güvenlik hatasıdır, bana ayrıca haber ver.
+
+DB DOĞRULAMA (hiçbir şey değişmemeli):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT md5(hashed_password), (SELECT count(*) FROM user_himself_activities) FROM users WHERE user_id = 2;"'
+BEKLENEN: <MD5_SONRA>|1
+  md5 USER.5'teki değerle AYNI olmalı (şifre değişmedi).
+  Log sayısı 1'de KALMALI: hata yolunda log kaydı yazılmaz. 2 olduysa, işlem başarısızken
+  bile "şifre değiştirdi" logu düşüyor demektir -> [ON_ERROR] (T4b'nin user_self=1
+  beklentisi de bozulur).
+
+LOG DOĞRULAMA (hangi yoldan reddedildi):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && grep -c "Threw PasswordIncorrectException" target/run.log'
+BEKLENEN: 1   (mutlak sayı; bu exception'ı sadece changePassword atar)
+0 ise 403'ü başka bir şey üretmiştir (ör. Spring Security isteği hiç geçirmemiştir)
+-> [ON_ERROR]. Bu satır WARN seviyesindedir, T4e'yi bozmaz.
+
+
+-------------------------------------------------------------------------------
+USER.8  NEGATİF — boş newPassword (validation, 400)
+-------------------------------------------------------------------------------
+ChangePasswordRequestDto'da currentPassword ve newPassword @NotNull + @NotBlank'tir. Boş
+yeni şifre servise HİÇ ulaşmadan MethodArgumentNotValidException ile reddedilmelidir.
+Bu adımda currentPassword DOĞRU gönderilir; amaç, isteğin şifre kontrolüne bile gelmeden
+elenmesini kanıtlamaktır.
+
+Önce mevcut sayıları ölç:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && grep -c "Threw validation exception" target/run.log; grep -c "Threw PasswordIncorrectException" target/run.log'
+İlk sayıyı <VAL_ONCE> olarak not al (login modülü LOGIN.6'da da bu satırı üretir).
+İkinci sayı 1 olmalı (USER.7'den).
+
+KOMUT:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/last_response.json -w "HTTP:%{http_code}\n" -X PUT "http://localhost:8080/api/v1/users/change-password" -H "Authorization: Bearer $(cat target/jwt_user.token)" -H "Content-Type: application/json" -d "{\"currentPassword\":\"Test5678!\",\"newPassword\":\"\"}"; echo "--- body ---"; cat target/last_response.json; echo'
+
+BEKLENEN:
+  - HTTP:400 ve "success":false.
+  - message, doğrulayıcının ürettiği metindir (varsayılan: "must not be blank"). Metin
+    locale'e göre değişebilir; KRİTER HTTP 400 + "success":false'tır.
+  - HTTP:403 gelirse validation çalışmamış, boş şifre servise kadar gitmiş ve orada
+    PasswordIncorrect'e takılmış demektir -> [ON_ERROR].
+  - HTTP:200 gelirse kullanıcının şifresi BOŞ bir değere ayarlanmış olabilir
+    -> [ON_ERROR], bu bir güvenlik hatasıdır, bana ayrıca haber ver.
+
+DB DOĞRULAMA:
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT md5(hashed_password), length(hashed_password), (SELECT count(*) FROM user_himself_activities) FROM users WHERE user_id = 2;"'
+BEKLENEN: <MD5_SONRA>|60|1     (USER.5'teki durum aynen duruyor)
+
+LOG DOĞRULAMA:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && grep -c "Threw validation exception" target/run.log; grep -c "Threw PasswordIncorrectException" target/run.log'
+BEKLENEN:
+  - İlk sayı: <VAL_ONCE> + 1
+  - İkinci sayı: HÂLÂ 1 (ARTMAMALI). Artmışsa istek servise ulaşmıştır, yani @Valid
+    devreye girmemiştir -> [ON_ERROR].
+
+
+-------------------------------------------------------------------------------
+USER.9  NEGATİF — token'sız istek (kimlik doğrulama)
+-------------------------------------------------------------------------------
+change-password'ün TEK koruması kimlik doğrulamadır (add-user'daki gibi bir adminId
+kontrolü yoktur). Bu yüzden token'sız isteğin reddedildiğini görmek bu endpoint için
+zorunlu bir testtir.
+
+KOMUT (Authorization başlığı YOK):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/last_response.json -w "HTTP:%{http_code}\n" -X PUT "http://localhost:8080/api/v1/users/change-password" -H "Content-Type: application/json" -d "{\"currentPassword\":\"Test5678!\",\"newPassword\":\"Test1234!\"}"; echo "--- body ---"; cat target/last_response.json; echo'
+
+BEKLENEN:
+  - HTTP:403 bekliyoruz. Gerekçe: SecurityConfig'te bu yol permitAll DEĞİL
+    (anyRequest().authenticated()), ayrıca formLogin/httpBasic yapılandırılmadığı için
+    Spring Security'nin varsayılan giriş noktası Http403ForbiddenEntryPoint'tir; bu da
+    401 değil 403 üretir ve gövde yazmaz.
+  - Gövde BOŞ gelebilir; "--- body ---" satırının altı boş olabilir, bu normaldir.
+  - HTTP:401 de KABUL EDİLİR. Bu değer uygulamanın kendisinde ölçülmedi, kaynak koddan
+    çıkarıldı; ikisi arasındaki fark bu testin amacını değiştirmez. 401 gördüysen adımı
+    geçir ama bana bildir ki bu satır ölçülmüş değerle güncellensin.
+  - KRİTER: cevap 2xx OLMAMALI ve aşağıdaki DB doğrulaması değişmemiş olmalı.
+    HTTP:200 gelirse endpoint token'sız çalışıyor demektir -> [ON_ERROR], bu bir güvenlik
+    hatasıdır, bana ayrıca haber ver.
+
+DB DOĞRULAMA:
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT md5(hashed_password), (SELECT count(*) FROM user_himself_activities) FROM users WHERE user_id = 2;"'
+BEKLENEN: <MD5_SONRA>|1
+  Şifre Test5678! olarak KALMALI. Değişmişse istek işlenmiştir -> [ON_ERROR].
+
+LOG NOTU: Bu istek DispatcherServlet'e ulaşmadan filtre zincirinde reddedilir; yani
+GlobalExceptionHandler çalışmaz ve run.log'a bu adım için bir WARN satırı düşmesi
+beklenmez. Düşmemesi normaldir, hata değildir.
+
+
+-------------------------------------------------------------------------------
+USER.10  BÖLÜM SONU KONTROLÜ
+-------------------------------------------------------------------------------
+KOMUT (bölüm sonu DB durumu — sonraki modüllerin ön koşulu):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT (SELECT count(*) FROM users), (SELECT count(*) FROM admins), (SELECT count(*) FROM contact_types), (SELECT count(*) FROM contacts), (SELECT count(*) FROM accounts), (SELECT count(*) FROM product_or_services), (SELECT count(*) FROM user_himself_activities);"'
+BEKLENEN: 2|1|0|0|0|0|1
+  Yani bu bölüm bittiğinde: kullanıcı sayısı hâlâ 2 (USER.1'in eklediği testuser1 ile),
+  diğer iş tabloları boş, user_himself_activities'te tam olarak 1 satır.
+
+KOMUT (kullandığımız artifact bozulmadı mı):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && wc -c target/jwt_user.token && python3 -c "import base64,json;t=open(\"target/jwt_user.token\").read().strip();p=t.split(\".\")[1];p+=\"=\"*(-len(p)%4);c=json.loads(base64.urlsafe_b64decode(p));print(\"sub=\"+str(c[\"sub\"]),\"userId=\"+str(c[\"userId\"]),\"adminId=\"+str(c[\"adminId\"]))"'
+BEKLENEN: USER.4'teki bayt sayısının AYNISI ve  sub=testuser1 userId=2 adminId=-1
+  Bu bölüm bu dosyaya yazmaz; farklıysa bir adım yanlış dosyaya yazmıştır -> [ON_ERROR].
+  Modül 4 (contact) ve modül 6 (product) bu dosyayı kullanacak.
+
+KOMUT (uygulama logunda ERROR var mı):
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && grep -nE "Unexpected system error|Unexpected Backend Error|ERROR" target/run.log | head -20; echo TARAMA_BITTI'
+BEKLENEN: sadece "TARAMA_BITTI".
+  Bu bölümün negatif testleri WARN üretir (PasswordIncorrect, validation, BadCredentials),
+  ERROR üretmez. ERROR satırı geldiyse beklenmeyen bir exception 500'e düşmüş demektir
+  -> [ON_ERROR]. (T4e'nin aynısıdır; burada erken yapılır ki hata kaynağında yakalansın.)
+
+DB DOĞRULAMA: yukarıdaki ilk sorgu bu adımın DB doğrulamasıdır.
+
+
+-------------------------------------------------------------------------------
+BÖLÜM BİTİŞİ
+-------------------------------------------------------------------------------
+USER.4 - USER.10 arasındaki her adım Beklenen sonucu verdiyse change-password bölümü
+GECTI'dir. Bir adım bile tutmadıysa sonraki modüle GEÇME -> [ON_ERROR]
+(HATA ADIMI alanı: "main2 / user_instructions.txt / USER.<n>").
+
+Modül 2 ancak USER.1-USER.3 (add-user bölümü) de yazılıp geçtiğinde GECTI sayılır; o
+zamana kadar main2 T2'de DURUM PASIF'tir ve bu modül ATLANIR.
+
+Modül tamamlandığında main2_instructions.txt T2'ye dön. T3 kaydını
+(2 user_instructions.txt GECTI ...) orada at ve sıradaki modüle
+(contact_type_instructions.txt) geç.
+
+
+======================================================================================
+ NOT : Claude Code, Opus 5 ile yazıldı. Bağlı dosyalar: main2_instructions.txt (T1
+ kalıpları ve sabit test verileri), main_instructions_v2.txt ([ON_ERROR] / [CLEANUP]),
+ login_instructions.txt (bu modülün ön koşulu olan admin token'ı üretir).
+ Doğrulandığı kaynak kod: user/api/v1/UserController.java (changePassword),
+ user/service/UserServiceImpl.java, user/dtos/ChangePasswordRequestDto.java,
+ user/repository/JdbcUserRepository.java, user/exceptions/PasswordIncorrectException.java,
+ utils/GlobalExceptionHandler.java, security/SecurityConfig.java,
+ security/JwtAuthenticationFilter.java, security/JwtServiceImpl.java,
+ login/service/LoginServiceImpl.java, OnMuhasebeSpringBootApplication.java (BCrypt),
+ logs/user_himself_activities/* (log tablosu ve alan adları),
+ src/test/resources/schema.sql (users, user_himself_activities sütunları).
+
+ 1 Ağustos 2026: Bu bölüm KAYNAK KODDAN çıkarıldı; login_instructions.txt'ten farklı
+ olarak henüz canlı uygulamada koşturulmadı (yazıldığı ortamda docker/veritabanı yoktu).
+ Bu yüzden "ÖLÇÜLDÜ" ibaresi kullanılmadı: BCrypt hash'i her koşuda değiştiği için md5
+ değerleri zaten koşum sırasında not alınır. İlk gerçek koşumda USER.9'un HTTP kodunu
+ (403 mü 401 mi) teyit edip bu dosyaya ölçülmüş değer olarak yazalım.
+======================================================================================
