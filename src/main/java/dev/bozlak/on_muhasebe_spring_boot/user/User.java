@@ -43,7 +43,7 @@ public class User {
 //    @ManyToOne(fetch = FetchType.LAZY)
 //    @JoinColumn(name = "who_created_admin_id", nullable = false)
 //    private Admin whoCreatedAdmin;
-    @Column("who_created_admin_id")    // <--- For users_initial.sql
+    @Column("who_created_admin_id")    // For first_user.sql
     private Short whoCreatedAdminId;
 
     @Column("extra_information")
