@@ -1,14 +1,14 @@
 package dev.bozlak.on_muhasebe_spring_boot.admin;
 
-import dev.bozlak.on_muhasebe_spring_boot.user.User;
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
-@Entity
-@Table(name = "admins")
+@Table("admins")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -16,18 +16,22 @@ import lombok.Setter;
 public class Admin {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "admin_id")
+    @Column("admin_id")
     private Short adminId;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", referencedColumnName = "user_id", nullable = false, unique = true)
-    private User user;
+    /**
+     * FK to users.user_id (unique in DB). Was a lazy @OneToOne to User, but it only ever
+     * carried the id, so it is now the plain FK column the rest of the project already uses.
+     */
+    @Column("user_id")
+    private Integer userId;
 
-    @Column(name = "is_active", nullable = false)
+    @Column("is_active")
     private Boolean isActive;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "who_created_admin_id", nullable = false)
-    private Admin admin;
+    /**
+     * FK to admins.admin_id (self reference). Was a lazy @ManyToOne to Admin.
+     */
+    @Column("who_created_admin_id")
+    private Short whoCreatedAdminId;
 }

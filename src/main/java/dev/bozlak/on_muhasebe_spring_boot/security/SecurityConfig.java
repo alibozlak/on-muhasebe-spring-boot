@@ -53,10 +53,17 @@ public class SecurityConfig {
         return configuration.getAuthenticationManager();
     }
 
+    /**
+     * corsConfigurationSource is injected rather than called as this.corsConfigurationSource():
+     * a cross-@Bean call relies on the @Configuration CGLIB proxy, which AOT-generated code
+     * does not apply, so under native it would build a second instance instead of the bean.
+     */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity httpSecurity, CorsConfigurationSource corsConfigurationSource
+    ) throws Exception {
         httpSecurity
-                .cors(c -> c.configurationSource(this.corsConfigurationSource()))
+                .cors(c -> c.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(

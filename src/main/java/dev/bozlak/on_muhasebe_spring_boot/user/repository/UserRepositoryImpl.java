@@ -12,31 +12,31 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserRepositoryImpl implements UserRepository {
 
-    private final JpaUserRepository jpaUserRepository;
+    private final JdbcUserRepository jdbcUserRepository;
 
     @Override
     public Integer createUser(User user) {
-        return this.jpaUserRepository.save(user).getUserId();
+        return this.jdbcUserRepository.save(user).getUserId();
     }
 
     @Override
     public Optional<User> findByUserName(String username) {
-        return this.jpaUserRepository.findByUsername(username);
+        return this.jdbcUserRepository.findByUsername(username);
     }
 
     @Override
     public Optional<UserIdAndIsAdminModel> getModelForJwtTokenGenerated(String username) {
-        return this.jpaUserRepository.getModelForJwtTokenGenerated(username);
+        return this.jdbcUserRepository.getModelForJwtTokenGenerated(username);
     }
 
     @Override
     public String getHashedPasswordByUserId(Integer userId) {
-        return this.jpaUserRepository.getHashedPasswordByUserId(userId)
+        return this.jdbcUserRepository.getHashedPasswordByUserId(userId)
                 .orElseThrow(() -> new UserIdNotFoundException(userId));
     }
 
     @Override
     public void changePasswordByUserId(Integer userId, String newHashedPassword) {
-        this.jpaUserRepository.changePasswordByUserId(userId, newHashedPassword);
+        this.jdbcUserRepository.changePasswordByUserId(userId, newHashedPassword);
     }
 }

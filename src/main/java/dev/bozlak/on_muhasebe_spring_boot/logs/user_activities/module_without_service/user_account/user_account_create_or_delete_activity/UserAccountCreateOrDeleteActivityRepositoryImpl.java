@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 @lombok.RequiredArgsConstructor
 public class UserAccountCreateOrDeleteActivityRepositoryImpl implements UserAccountCreateOrDeleteActivityRepository {
 
-    private final JpaUserAccountCreateOrDeleteActivityRepository jpaUserAccountCreateOrDeleteActivityRepository;
+    private final JdbcUserAccountCreateOrDeleteActivityRepository jdbcUserAccountCreateOrDeleteActivityRepository;
     private final UserAccountMapper userAccountMapper;
 
     @Override
@@ -27,7 +27,7 @@ public class UserAccountCreateOrDeleteActivityRepositoryImpl implements UserAcco
         userAccountCreateOrDeleteActivity.createdLogDate = java.time.LocalDate.now();
 
         try {
-            this.jpaUserAccountCreateOrDeleteActivityRepository.save(userAccountCreateOrDeleteActivity);
+            this.jdbcUserAccountCreateOrDeleteActivityRepository.save(userAccountCreateOrDeleteActivity);
         } catch (Exception e){
             throw new UserAccountCreateOrDeleteActivityDidntAddException(e.getMessage());
         }

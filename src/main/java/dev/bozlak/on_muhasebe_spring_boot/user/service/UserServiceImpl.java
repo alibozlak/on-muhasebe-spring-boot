@@ -8,11 +8,11 @@ import dev.bozlak.on_muhasebe_spring_boot.user.dtos.UserIdAndIsAdminModel;
 import dev.bozlak.on_muhasebe_spring_boot.user.exceptions.PasswordIncorrectException;
 import dev.bozlak.on_muhasebe_spring_boot.user.repository.UserRepository;
 import dev.bozlak.on_muhasebe_spring_boot.user.service.logging.*;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.Optional;

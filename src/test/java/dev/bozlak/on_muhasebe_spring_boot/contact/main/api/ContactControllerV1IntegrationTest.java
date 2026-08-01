@@ -2,12 +2,12 @@ package dev.bozlak.on_muhasebe_spring_boot.contact.main.api;
 
 import dev.bozlak.on_muhasebe_spring_boot.contact.main.Contact;
 import dev.bozlak.on_muhasebe_spring_boot.contact.main.dtos.CreateContactRequestDto;
-import dev.bozlak.on_muhasebe_spring_boot.contact.main.repository.JpaContactRepository;
+import dev.bozlak.on_muhasebe_spring_boot.contact.main.repository.JdbcContactRepository;
 import dev.bozlak.on_muhasebe_spring_boot.logs
         .user_activities
         .module_without_service
         .contact
-        .created_or_deleted.JpaUserContactActivityCreatedOrDeletedRepository;
+        .created_or_deleted.JdbcUserContactActivityCreatedOrDeletedRepository;
 import dev.bozlak.on_muhasebe_spring_boot.util.BaseIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,10 +33,10 @@ public class ContactControllerV1IntegrationTest extends BaseIntegrationTest {
     ObjectMapper objectMapper;
 
     @Autowired
-    JpaContactRepository jpaContactRepository;
+    JdbcContactRepository jdbcContactRepository;
 
     @Autowired
-    JpaUserContactActivityCreatedOrDeletedRepository jpaUserContactActivityCreatedOrDeletedRepository;
+    JdbcUserContactActivityCreatedOrDeletedRepository jdbcUserContactActivityCreatedOrDeletedRepository;
 
     @Test
     void createContact_persistsContactAndLog_andReturns201() throws Exception {
@@ -55,7 +55,7 @@ public class ContactControllerV1IntegrationTest extends BaseIntegrationTest {
         ).andExpect(status().isCreated());
 
         // assert 1: contacts table has the new record
-        assertThat(this.jpaContactRepository.findAll())
+        assertThat(this.jdbcContactRepository.findAll())
                 .singleElement()
                 .satisfies(contact -> {
                     assertThat(contact.contactId).isNotNull();
@@ -67,10 +67,10 @@ public class ContactControllerV1IntegrationTest extends BaseIntegrationTest {
                     assertThat(contact.isActive).isTrue();
                 });
 
-        Long createdContactId = this.jpaContactRepository.findAll().getFirst().contactId;
+        Long createdContactId = this.jdbcContactRepository.findAll().getFirst().contactId;
 
         // assert 2: The log knows the new contact and marks the activity as a create
-        assertThat(this.jpaUserContactActivityCreatedOrDeletedRepository.findAll())
+        assertThat(this.jdbcUserContactActivityCreatedOrDeletedRepository.findAll())
                 .singleElement()
                 .satisfies(log -> {
                     assertThat(log.userContactActivityCreatedOrDeletedId).isNotNull();
@@ -94,7 +94,7 @@ public class ContactControllerV1IntegrationTest extends BaseIntegrationTest {
         ).andExpect(status().isCreated());
 
         // assert 1: Only the mandatory columns are filled, the optional ones stayed null
-        assertThat(this.jpaContactRepository.findAll())
+        assertThat(this.jdbcContactRepository.findAll())
                 .singleElement()
                 .satisfies(contact -> {
                     assertThat(contact.userId).isEqualTo(userId);
@@ -106,7 +106,7 @@ public class ContactControllerV1IntegrationTest extends BaseIntegrationTest {
                 });
 
         // assert 2: The create log is written for the optional-free request too
-        assertThat(this.jpaUserContactActivityCreatedOrDeletedRepository.findAll()).hasSize(1);
+        assertThat(this.jdbcUserContactActivityCreatedOrDeletedRepository.findAll()).hasSize(1);
     }
 
     @Test
@@ -122,8 +122,8 @@ public class ContactControllerV1IntegrationTest extends BaseIntegrationTest {
         ).andExpect(status().isBadRequest());
 
         // assert: The validation stops before the service, so both tables stay empty
-        assertThat(this.jpaContactRepository.findAll()).isEmpty();
-        assertThat(this.jpaUserContactActivityCreatedOrDeletedRepository.findAll()).isEmpty();
+        assertThat(this.jdbcContactRepository.findAll()).isEmpty();
+        assertThat(this.jdbcUserContactActivityCreatedOrDeletedRepository.findAll()).isEmpty();
     }
 
     @Test
@@ -139,8 +139,8 @@ public class ContactControllerV1IntegrationTest extends BaseIntegrationTest {
         ).andExpect(status().isBadRequest());
 
         // assert: Neither the contact nor its log was written
-        assertThat(this.jpaContactRepository.findAll()).isEmpty();
-        assertThat(this.jpaUserContactActivityCreatedOrDeletedRepository.findAll()).isEmpty();
+        assertThat(this.jdbcContactRepository.findAll()).isEmpty();
+        assertThat(this.jdbcUserContactActivityCreatedOrDeletedRepository.findAll()).isEmpty();
     }
 
     /**
@@ -159,8 +159,8 @@ public class ContactControllerV1IntegrationTest extends BaseIntegrationTest {
         ).andExpect(status().isBadRequest());
 
         // assert: Neither the contact nor its log was written
-        assertThat(this.jpaContactRepository.findAll()).isEmpty();
-        assertThat(this.jpaUserContactActivityCreatedOrDeletedRepository.findAll()).isEmpty();
+        assertThat(this.jdbcContactRepository.findAll()).isEmpty();
+        assertThat(this.jdbcUserContactActivityCreatedOrDeletedRepository.findAll()).isEmpty();
     }
 
     /**
@@ -179,8 +179,8 @@ public class ContactControllerV1IntegrationTest extends BaseIntegrationTest {
         ).andExpect(status().isInternalServerError());
 
         // assert: The request never reaches the service, so both tables stay empty
-        assertThat(this.jpaContactRepository.findAll()).isEmpty();
-        assertThat(this.jpaUserContactActivityCreatedOrDeletedRepository.findAll()).isEmpty();
+        assertThat(this.jdbcContactRepository.findAll()).isEmpty();
+        assertThat(this.jdbcUserContactActivityCreatedOrDeletedRepository.findAll()).isEmpty();
     }
 
     @Test
@@ -204,7 +204,7 @@ public class ContactControllerV1IntegrationTest extends BaseIntegrationTest {
         ).andExpect(status().isCreated());
 
         // assert 1: Both of them belong to the same user and both got their own id
-        List<Contact> contacts = this.jpaContactRepository.findAll();
+        List<Contact> contacts = this.jdbcContactRepository.findAll();
         assertThat(contacts)
                 .hasSize(2)
                 .allSatisfy(contact -> {
@@ -220,7 +220,7 @@ public class ContactControllerV1IntegrationTest extends BaseIntegrationTest {
                 .containsExactlyInAnyOrder("Ahmet Yılmaz", "Mehmet Demir");
 
         // assert 2: Each contact has exactly one create log
-        assertThat(this.jpaUserContactActivityCreatedOrDeletedRepository.findAll())
+        assertThat(this.jdbcUserContactActivityCreatedOrDeletedRepository.findAll())
                 .hasSize(2)
                 .allSatisfy(log -> assertThat(log.isActivityCreate).isTrue())
                 .extracting(log -> log.contactId)

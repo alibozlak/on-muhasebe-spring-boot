@@ -8,10 +8,10 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class AdminActivityAboutUserRepositoryImpl implements AdminActivityAboutUserRepository {
 
-    private final JpaAdminActivityAboutUserRepository jpaAdminActivityAboutUserRepository;
+    private final JdbcAdminActivityAboutUserRepository jdbcAdminActivityAboutUserRepository;
 
     @Override
     public void addActivity(AdminActivityAboutUser adminActivityAboutUser) {
-        this.jpaAdminActivityAboutUserRepository.save(adminActivityAboutUser);
+        this.jdbcAdminActivityAboutUserRepository.save(adminActivityAboutUser);
     }
 }

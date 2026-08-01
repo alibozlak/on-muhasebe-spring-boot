@@ -7,13 +7,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class ContactTypeRepositoryImpl implements ContactTypeRepository {
 
-    private final JpaContactTypeRepository jpaContactTypeRepository;
+    private final JdbcContactTypeRepository jdbcContactTypeRepository;
 
     @Override
     public Byte createContactType(String contactTypeName) {
         ContactType contactType = new ContactType();
         contactType.contactTypeName = contactTypeName;
 
-        return this.jpaContactTypeRepository.save(contactType).contactTypeId;
+        return this.jdbcContactTypeRepository.save(contactType).contactTypeId;
     }
 }

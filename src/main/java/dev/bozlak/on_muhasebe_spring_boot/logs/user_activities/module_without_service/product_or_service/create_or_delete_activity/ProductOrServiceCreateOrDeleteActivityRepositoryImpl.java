@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 @lombok.RequiredArgsConstructor
 public class ProductOrServiceCreateOrDeleteActivityRepositoryImpl implements ProductOrServiceCreateOrDeleteActivityRepository
 {
-    private final JpaProductOrServiceCreateOrDeleteActivityRepository jpaProductOrServiceCreateOrDeleteActivityRepository;
+    private final JdbcProductOrServiceCreateOrDeleteActivityRepository jdbcProductOrServiceCreateOrDeleteActivityRepository;
 
     @Override
     public void add(Long productOrServiceId) {
@@ -17,6 +17,6 @@ public class ProductOrServiceCreateOrDeleteActivityRepositoryImpl implements Pro
         productOrServiceCreateOrDeleteActivity.createdLogDate = java.time.LocalDate.now();
         productOrServiceCreateOrDeleteActivity.productOrServiceId = productOrServiceId;
 
-        this.jpaProductOrServiceCreateOrDeleteActivityRepository.save(productOrServiceCreateOrDeleteActivity);
+        this.jdbcProductOrServiceCreateOrDeleteActivityRepository.save(productOrServiceCreateOrDeleteActivity);
     }
 }

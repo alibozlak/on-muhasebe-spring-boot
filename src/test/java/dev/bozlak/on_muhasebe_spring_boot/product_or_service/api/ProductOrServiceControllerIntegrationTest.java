@@ -4,10 +4,10 @@ import dev.bozlak.on_muhasebe_spring_boot.logs
         .user_activities
         .module_without_service
         .product_or_service
-        .create_or_delete_activity.JpaProductOrServiceCreateOrDeleteActivityRepository;
+        .create_or_delete_activity.JdbcProductOrServiceCreateOrDeleteActivityRepository;
 import dev.bozlak.on_muhasebe_spring_boot.product_or_service.ProductOrService;
 import dev.bozlak.on_muhasebe_spring_boot.product_or_service.dtos.CreateProductOrServiceRequestDto;
-import dev.bozlak.on_muhasebe_spring_boot.product_or_service.repository.JpaProductOrServiceRepository;
+import dev.bozlak.on_muhasebe_spring_boot.product_or_service.repository.JdbcProductOrServiceRepository;
 import dev.bozlak.on_muhasebe_spring_boot.util.BaseIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,10 +35,10 @@ public class ProductOrServiceControllerIntegrationTest extends BaseIntegrationTe
     ObjectMapper objectMapper;
 
     @Autowired
-    JpaProductOrServiceRepository jpaProductOrServiceRepository;
+    JdbcProductOrServiceRepository jdbcProductOrServiceRepository;
 
     @Autowired
-    JpaProductOrServiceCreateOrDeleteActivityRepository jpaProductOrServiceCreateOrDeleteActivityRepository;
+    JdbcProductOrServiceCreateOrDeleteActivityRepository jdbcProductOrServiceCreateOrDeleteActivityRepository;
 
     @Test
     void createProductOrService_persistsProductOrServiceAndLog_andReturns201() throws Exception {
@@ -57,7 +57,7 @@ public class ProductOrServiceControllerIntegrationTest extends BaseIntegrationTe
         ).andExpect(status().isCreated());
 
         // assert 1: product_or_services table insert record
-        assertThat(this.jpaProductOrServiceRepository.findAll())
+        assertThat(this.jdbcProductOrServiceRepository.findAll())
                 .singleElement()
                 .satisfies(productOrService -> {
                     assertThat(productOrService.productOrServiceId).isNotNull();
@@ -72,11 +72,11 @@ public class ProductOrServiceControllerIntegrationTest extends BaseIntegrationTe
                     assertThat(productOrService.createdAt).isBeforeOrEqualTo(LocalDate.now());
                 });
 
-        Long createdProductOrServiceId = this.jpaProductOrServiceRepository
+        Long createdProductOrServiceId = this.jdbcProductOrServiceRepository
                 .findAll().getFirst().productOrServiceId;
 
         // assert 2: Did inserted record product_or_service_create_or_delete_activities table
-        assertThat(this.jpaProductOrServiceCreateOrDeleteActivityRepository.findAll())
+        assertThat(this.jdbcProductOrServiceCreateOrDeleteActivityRepository.findAll())
                 .singleElement()
                 .satisfies(log -> {
                     assertThat(log.productOrServiceCreateOrDeleteActivityId).isNotNull();
@@ -100,7 +100,7 @@ public class ProductOrServiceControllerIntegrationTest extends BaseIntegrationTe
         ).andExpect(status().isCreated());
 
         // assert 1: Only the mandatory columns are filled, the optional ones stayed null
-        assertThat(this.jpaProductOrServiceRepository.findAll())
+        assertThat(this.jdbcProductOrServiceRepository.findAll())
                 .singleElement()
                 .satisfies(productOrService -> {
                     assertThat(productOrService.userId).isEqualTo(userId);
@@ -112,7 +112,7 @@ public class ProductOrServiceControllerIntegrationTest extends BaseIntegrationTe
                 });
 
         // assert 2: The create log is written for the optional-free request too
-        assertThat(this.jpaProductOrServiceCreateOrDeleteActivityRepository.findAll()).hasSize(1);
+        assertThat(this.jdbcProductOrServiceCreateOrDeleteActivityRepository.findAll()).hasSize(1);
     }
 
     @Test
@@ -128,8 +128,8 @@ public class ProductOrServiceControllerIntegrationTest extends BaseIntegrationTe
         ).andExpect(status().isBadRequest());
 
         // assert: Neither the product_or_service nor its log was written
-        assertThat(this.jpaProductOrServiceRepository.findAll()).isEmpty();
-        assertThat(this.jpaProductOrServiceCreateOrDeleteActivityRepository.findAll()).isEmpty();
+        assertThat(this.jdbcProductOrServiceRepository.findAll()).isEmpty();
+        assertThat(this.jdbcProductOrServiceCreateOrDeleteActivityRepository.findAll()).isEmpty();
     }
 
     @Test
@@ -153,7 +153,7 @@ public class ProductOrServiceControllerIntegrationTest extends BaseIntegrationTe
         ).andExpect(status().isCreated());
 
         // assert 1: Both of them belong to the same user and both got their own id
-        List<ProductOrService> productOrServices = this.jpaProductOrServiceRepository.findAll();
+        List<ProductOrService> productOrServices = this.jdbcProductOrServiceRepository.findAll();
         assertThat(productOrServices)
                 .hasSize(2)
                 .allSatisfy(productOrService -> {
@@ -169,7 +169,7 @@ public class ProductOrServiceControllerIntegrationTest extends BaseIntegrationTe
                 .containsExactlyInAnyOrder(1L, 2L);
 
         // assert 3: Each of them has exactly one create log
-        assertThat(this.jpaProductOrServiceCreateOrDeleteActivityRepository.findAll())
+        assertThat(this.jdbcProductOrServiceCreateOrDeleteActivityRepository.findAll())
                 .hasSize(2)
                 .allSatisfy(log -> assertThat(log.isActivityCreate).isTrue())
                 .extracting(log -> log.productOrServiceId)

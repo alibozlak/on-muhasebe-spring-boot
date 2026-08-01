@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 public class AdminActivityAboutContactTypeCreatedOrDeletedRepositoryImpl
     implements AdminActivityAboutContactTypeCreatedOrDeletedRepository
 {
-    private final JpaAdminActivityContactTypeCreatedOrDeletedRepository
-            jpaAdminActivityContactTypeCreatedOrDeletedRepository;
+    private final JdbcAdminActivityContactTypeCreatedOrDeletedRepository
+            jdbcAdminActivityContactTypeCreatedOrDeletedRepository;
 
     private final AdminActivityMapper adminActivityMapper;
 
@@ -21,6 +21,6 @@ public class AdminActivityAboutContactTypeCreatedOrDeletedRepositoryImpl
                 = this.adminActivityMapper.toEntityFromItsModel(addAdminActivityCreateOrDeleteModel);
         adminActivityAboutContactTypeCreatedOrDeleted.isActivityCreate = true;
 
-        this.jpaAdminActivityContactTypeCreatedOrDeletedRepository.save(adminActivityAboutContactTypeCreatedOrDeleted);
+        this.jdbcAdminActivityContactTypeCreatedOrDeletedRepository.save(adminActivityAboutContactTypeCreatedOrDeleted);
     }
 }

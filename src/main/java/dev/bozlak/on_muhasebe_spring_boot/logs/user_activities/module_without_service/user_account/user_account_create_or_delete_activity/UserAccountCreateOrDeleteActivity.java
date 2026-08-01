@@ -4,24 +4,24 @@ package dev.bozlak.on_muhasebe_spring_boot.logs
         .user_account
         .user_account_create_or_delete_activity;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
-@Entity
-@Table(name = "user_account_create_or_delete_activities")
+@Table("user_account_create_or_delete_activities")
 // For why didn't use encapsulation: Look project root folder README.md file
 public class UserAccountCreateOrDeleteActivity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_account_activity_id")
+    @Column("user_account_activity_id")
     public Long userAccountCreateOrDeleteActivityId;
 
-    @Column(name = "is_activity_create", nullable = false)
+    @Column("is_activity_create")
     public Boolean isActivityCreate;
 
-    @Column(name = "account_id", nullable = false)
+    @Column("account_id")
     public Long accountId;  // FK in DB
 
-    @Column(name = "created_at", nullable = false)
+    @Column("created_at")
     public java.time.LocalDate createdLogDate;
 }

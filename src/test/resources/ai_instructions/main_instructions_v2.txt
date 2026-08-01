@@ -92,7 +92,10 @@ Beklenen:
 Container zaten varsa (önceki koşudan kalmış):
   wsl -e bash -lc 'docker rm -f pre_accounting_db && docker ps -a --filter name=pre_accounting_db'
 Bu şart önemli: Adım 4'teki SQL'ler user_id=1 / admin_id=1 varsayıyor. Eski veri kalırsa
-IDENTITY sayacı 1'den başlamaz ve admins tablosundaki foreign key patlar.
+IDENTITY sayacı 1'den başlamaz ve admins.user_id yanlış bir users satırını gösterir.
+Bu artık GÜRÜLTÜSÜZ bozulur: Adım 3b'nin şeması foreign key TANIMLAMAZ (testlerin yazdığı
+karşılıksız satırlarla uyumlu olsun diye), yani hata almazsın, sessizce tutarsız veri
+üretirsin. Container'ı silmek bu yüzden şart.
 
 
 -------------------------------------------------------------------------------
@@ -121,19 +124,32 @@ Sonsuza kadar bekleme; süre dolarsa bu bir hatadır.
 
 
 -------------------------------------------------------------------------------
-3. VERİTABANINI VE TABLOLARI DOĞRULA
+3. VERİTABANINI VE TABLOLARI HAZIRLA
 -------------------------------------------------------------------------------
+Proje Spring Data JPA'dan Spring Data JDBC'ye geçti. Tabloları eskiden uygulamanın kendisi
+oluşturuyordu (ddl-auto=update); Spring Data JDBC ise DDL ÜRETMEZ. Bu yüzden şema artık bu
+adımda schema.sql'den elle kurulur. Adım 3b atlanırsa Adım 4'teki INSERT'ler
+"relation ... does not exist" ile patlar.
+(application-test.properties'teki spring.sql.init.mode=always YALNIZCA 'mvn test' içindir:
+ o dosya da schema.sql de test classpath'indedir, 'mvn spring-boot:run' onları görmez.
+ Bu container'a şemayı psql ile biz veririz.)
+
 3a. Container ayakta mı:
   wsl -e bash -lc 'docker ps --filter name=pre_accounting_db --format "{{.Names}} | {{.Status}} | {{.Ports}}"'
 Beklenen: pre_accounting_db, "Up ...", port eşlemesi 0.0.0.0:5433->5432/tcp.
 
-3b. Tablolar doğru veritabanında oluşmuş mu (Spring Data JPA, ddl-auto=update):
+3b. Şemayı oluştur:
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && docker exec -i pre_accounting_db psql -U bozlak -d test_db -v ON_ERROR_STOP=1 < src/test/resources/schema.sql'
+Beklenen: "CREATE TABLE" satırları ve exit code 0. Hata -> [ON_ERROR].
+(schema.sql "CREATE TABLE IF NOT EXISTS" kullanır; ikinci kez çalışması zarar vermez.)
+
+3c. Tablolar doğru veritabanında oluşmuş mu:
   wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -c "\dt"'
-Beklenen: en azından 'users' ve 'admins' tabloları listelenmeli.
-Tablolar YOKSA uygulama başka bir veritabanına bağlanmış demektir -> [ON_ERROR].
+Beklenen: 12 tablo listelenmeli; en azından 'users' ve 'admins' görünmeli.
+Tablolar YOKSA psql başka bir veritabanına bağlanmış demektir -> [ON_ERROR].
 (Bu kontrol atlanırsa SQL'ler boş/yanlış bir DB'ye gider ve pipeline "başarılı" görünür.)
 
-3c. users tablosu boş mu:
+3d. users tablosu boş mu:
   wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT count(*) FROM users;"'
 Beklenen: 0. Değilse -> [ON_ERROR] (Adım 1'deki id varsayımı bozulmuş).
 

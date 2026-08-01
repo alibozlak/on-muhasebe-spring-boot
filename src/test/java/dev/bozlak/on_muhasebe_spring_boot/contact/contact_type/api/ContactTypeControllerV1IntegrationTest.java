@@ -1,11 +1,11 @@
 package dev.bozlak.on_muhasebe_spring_boot.contact.contact_type.api;
 
 import dev.bozlak.on_muhasebe_spring_boot.contact.contact_type.ContactType;
-import dev.bozlak.on_muhasebe_spring_boot.contact.contact_type.repository.JpaContactTypeRepository;
+import dev.bozlak.on_muhasebe_spring_boot.contact.contact_type.repository.JdbcContactTypeRepository;
 import dev.bozlak.on_muhasebe_spring_boot.logs
         .admin_activities
         .repository
-        .about_contact_type.JpaAdminActivityContactTypeCreatedOrDeletedRepository;
+        .about_contact_type.JdbcAdminActivityContactTypeCreatedOrDeletedRepository;
 import dev.bozlak.on_muhasebe_spring_boot.util.BaseIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,10 +25,10 @@ public class ContactTypeControllerV1IntegrationTest extends BaseIntegrationTest 
     MockMvc mockMvc;
 
     @Autowired
-    JpaContactTypeRepository jpaContactTypeRepository;
+    JdbcContactTypeRepository jdbcContactTypeRepository;
 
     @Autowired
-    JpaAdminActivityContactTypeCreatedOrDeletedRepository jpaAdminActivityContactTypeCreatedOrDeletedRepository;
+    JdbcAdminActivityContactTypeCreatedOrDeletedRepository jdbcAdminActivityContactTypeCreatedOrDeletedRepository;
 
     @Test
     void createContactType_persistsContactTypeAndLog_andReturns201() throws Exception {
@@ -40,17 +40,17 @@ public class ContactTypeControllerV1IntegrationTest extends BaseIntegrationTest 
         ).andExpect(status().isCreated());
 
         // assert 1: contact_types table has the new record
-        assertThat(this.jpaContactTypeRepository.findAll())
+        assertThat(this.jdbcContactTypeRepository.findAll())
                 .singleElement()
                 .satisfies(contactType -> {
                     assertThat(contactType.contactTypeId).isNotNull();
                     assertThat(contactType.contactTypeName).isEqualTo("Müşteri");
                 });
 
-        Byte createdContactTypeId = this.jpaContactTypeRepository.findAll().getFirst().contactTypeId;
+        Byte createdContactTypeId = this.jdbcContactTypeRepository.findAll().getFirst().contactTypeId;
 
         // assert 2: The log knows the admin and the new contact type
-        assertThat(this.jpaAdminActivityContactTypeCreatedOrDeletedRepository.findAll())
+        assertThat(this.jdbcAdminActivityContactTypeCreatedOrDeletedRepository.findAll())
                 .singleElement()
                 .satisfies(log -> {
                     assertThat(log.adminActivityAboutContactTypeCreatedOrDeletedId).isNotNull();
@@ -68,8 +68,8 @@ public class ContactTypeControllerV1IntegrationTest extends BaseIntegrationTest 
         ).andExpect(status().isBadRequest());
 
         // assert: The controller stops before the service, so both tables stay empty
-        assertThat(this.jpaContactTypeRepository.findAll()).isEmpty();
-        assertThat(this.jpaAdminActivityContactTypeCreatedOrDeletedRepository.findAll()).isEmpty();
+        assertThat(this.jdbcContactTypeRepository.findAll()).isEmpty();
+        assertThat(this.jdbcAdminActivityContactTypeCreatedOrDeletedRepository.findAll()).isEmpty();
     }
 
     @Test
@@ -80,8 +80,8 @@ public class ContactTypeControllerV1IntegrationTest extends BaseIntegrationTest 
         ).andExpect(status().isForbidden());
 
         // assert: A bad admin id writes nothing to the database
-        assertThat(this.jpaContactTypeRepository.findAll()).isEmpty();
-        assertThat(this.jpaAdminActivityContactTypeCreatedOrDeletedRepository.findAll()).isEmpty();
+        assertThat(this.jdbcContactTypeRepository.findAll()).isEmpty();
+        assertThat(this.jdbcAdminActivityContactTypeCreatedOrDeletedRepository.findAll()).isEmpty();
     }
 
     /**
@@ -95,8 +95,8 @@ public class ContactTypeControllerV1IntegrationTest extends BaseIntegrationTest 
         ).andExpect(status().isInternalServerError());
 
         // assert: The request never reaches the service, so both tables stay empty
-        assertThat(this.jpaContactTypeRepository.findAll()).isEmpty();
-        assertThat(this.jpaAdminActivityContactTypeCreatedOrDeletedRepository.findAll()).isEmpty();
+        assertThat(this.jdbcContactTypeRepository.findAll()).isEmpty();
+        assertThat(this.jdbcAdminActivityContactTypeCreatedOrDeletedRepository.findAll()).isEmpty();
     }
 
     @Test
@@ -114,7 +114,7 @@ public class ContactTypeControllerV1IntegrationTest extends BaseIntegrationTest 
         ).andExpect(status().isCreated());
 
         // assert 1: Both contact types are in the table and each one has its own id
-        List<ContactType> contactTypes = this.jpaContactTypeRepository.findAll();
+        List<ContactType> contactTypes = this.jdbcContactTypeRepository.findAll();
         assertThat(contactTypes)
                 .hasSize(2)
                 .extracting(contactType -> contactType.contactTypeId)
@@ -126,7 +126,7 @@ public class ContactTypeControllerV1IntegrationTest extends BaseIntegrationTest 
                 .containsExactlyInAnyOrder("Müşteri", "Tedarikçi");
 
         // assert 2: Each contact type has one create log of the same admin
-        assertThat(this.jpaAdminActivityContactTypeCreatedOrDeletedRepository.findAll())
+        assertThat(this.jdbcAdminActivityContactTypeCreatedOrDeletedRepository.findAll())
                 .hasSize(2)
                 .allSatisfy(log -> {
                     assertThat(log.adminId).isEqualTo(adminId);
