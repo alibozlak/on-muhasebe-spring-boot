@@ -204,7 +204,14 @@ Buraya sadece Adım 1-5'in tamamı "Beklenen" sonucu verdiyse gelinir. "Testler 
 diye varsayma; geçme kriteri main2_instructions.txt'te tanımlı olan kriterdir.
 
 6a. Rapor dosyasını yaz (pom.xml ile aynı dizine, yani PROJE_WSL köküne):
-  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && { echo "SONUC: BASARILI"; echo "TARIH: $(date -Iseconds)"; echo "----- docker ps -a -----"; docker ps -a; echo "----- run.log (Maven + Spring tum loglar) -----"; cat target/run.log; } > infos.txt && ls -l infos.txt'
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && { echo "SONUC: BASARILI"; echo "TARIH: $(date -Iseconds)"; echo "----- test_results.txt (modul bazli ozet) -----"; cat target/test_results.txt; echo "----- docker ps -a -----"; docker ps -a; echo "----- run.log (Maven + Spring tum loglar) -----"; cat target/run.log; } > infos.txt && ls -l infos.txt'
+
+test_results.txt bölümü komutun parçasıdır, sonradan eklenecek bir şey değildir:
+main2_instructions.txt T5, "infos.txt yazılırken target/test_results.txt içeriğinin de
+rapora girdiğinden emin ol" der. Bu satır komutta yokken iki talimat çakışıyordu ve
+çalıştıran taraf komutu kendi kafasına göre genişletmek zorunda kalıyordu — TEMEL KURALLAR
+ise komutların birebir uygulanmasını söyler. Çakışma komutun içine alınarak kapatıldı.
+(2 Ağustos 2026 koşumunda bu çakışma bizzat yaşandı ve T5 lehine çözüldü.)
 
 6b. [CLEANUP] bloğunu uygula.
 

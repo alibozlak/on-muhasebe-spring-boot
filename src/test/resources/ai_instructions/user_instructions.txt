@@ -377,14 +377,15 @@ KOMUT (Authorization başlığı YOK):
   wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/last_response.json -w "HTTP:%{http_code}\n" -X PUT "http://localhost:8080/api/v1/users/change-password" -H "Content-Type: application/json" -d "{\"currentPassword\":\"Test5678!\",\"newPassword\":\"bozlak\"}"; echo "--- body ---"; cat target/last_response.json; echo'
 
 BEKLENEN:
-  - HTTP:403 bekliyoruz. Gerekçe: SecurityConfig'te bu yol permitAll DEĞİL
-    (anyRequest().authenticated()), ayrıca formLogin/httpBasic yapılandırılmadığı için
-    Spring Security'nin varsayılan giriş noktası Http403ForbiddenEntryPoint'tir; bu da
-    401 değil 403 üretir ve gövde yazmaz.
-  - Gövde BOŞ gelebilir; "--- body ---" satırının altı boş olabilir, bu normaldir.
-  - HTTP:401 de KABUL EDİLİR. Bu değer uygulamanın kendisinde ölçülmedi, kaynak koddan
-    çıkarıldı; ikisi arasındaki fark bu testin amacını değiştirmez. 401 gördüysen adımı
-    geçir ama bana bildir ki bu satır ölçülmüş değerle güncellensin.
+  - HTTP:403  (ÖLÇÜLDÜ, tahmin değil: 2 Ağustos 2026 koşumunda 403 geldi, gövde boştu.)
+    Gerekçe: SecurityConfig'te bu yol permitAll DEĞİL (anyRequest().authenticated()),
+    ayrıca formLogin/httpBasic yapılandırılmadığı için Spring Security'nin varsayılan giriş
+    noktası Http403ForbiddenEntryPoint'tir; bu da 401 değil 403 üretir ve gövde yazmaz.
+  - Gövde BOŞ: "--- body ---" satırının altında hiçbir şey olmaz, bu normaldir.
+  - HTTP:401 artık kabul edilen bir değer DEĞİLDİR (ölçülmeden önce "403 ya da 401" yazıyordu,
+    ölçüm 403'ü sabitledi). 401 görürsen güvenlik yapılandırması değişmiş demektir — ör.
+    httpBasic/formLogin eklenmiş ve varsayılan giriş noktası başkalaşmıştır. Testin amacı
+    bozulmaz ama sessizce geçme, bana bildir.
   - KRİTER: cevap 2xx OLMAMALI ve aşağıdaki DB doğrulaması değişmemiş olmalı.
     HTTP:200 gelirse endpoint token'sız çalışıyor demektir -> [ON_ERROR], bu bir güvenlik
     hatasıdır, bana ayrıca haber ver. (İstek başarılı olsaydı şifreyi zaten USER.7'nin
@@ -672,9 +673,11 @@ USER.16  NEGATİF — token'sız istek (kimlik doğrulama)
 KOMUT (Authorization başlığı YOK):
   wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/last_response.json -w "HTTP:%{http_code}\n" -X PUT "http://localhost:8080/api/v1/users/change-password" -H "Content-Type: application/json" -d "{\"currentPassword\":\"Test5678!\",\"newPassword\":\"Test1234!\"}"; echo "--- body ---"; cat target/last_response.json; echo'
 
-BEKLENEN: USER.6 ile aynı kriter — HTTP:403 bekliyoruz (Http403ForbiddenEntryPoint,
-  gövde boş), HTTP:401 de kabul edilir; KRİTER cevabın 2xx OLMAMASI ve DB'nin
-  değişmemesidir. HTTP:200 -> [ON_ERROR], güvenlik hatası.
+BEKLENEN: USER.6 ile aynı kriter — HTTP:403 ve BOŞ gövde (Http403ForbiddenEntryPoint);
+  KRİTER cevabın 2xx OLMAMASI ve DB'nin değişmemesidir. HTTP:200 -> [ON_ERROR], güvenlik
+  hatası. 403 değeri USER.6'da 2 Ağustos 2026 koşumunda ÖLÇÜLDÜ; bu adım aynı filtre
+  zincirinden geçtiği için aynı kod beklenir, ama B bölümü henüz canlı koşulmadı — farklı
+  bir kod görürsen bana bildir.
   Token'sız istekte kullanıcının admin olup olmaması hiç sorulmaz: istek DispatcherServlet'e
   ulaşmadan filtre zincirinde biter, yani bu adım A bölümündeki USER.6 ile aynı yoldan
   reddedilir.
@@ -749,12 +752,19 @@ USER.1 - USER.17 arasındaki her adım Beklenen sonucu verdiyse bu modül GECTI'
 Bir adım bile tutmadıysa sonraki modüle GEÇME -> [ON_ERROR]
 (HATA ADIMI alanı: "main2 / user_instructions.txt / USER.<n>").
 
-USER.8 - USER.10 (add-user) yazılmadığı sürece modül EKSİKTİR: T2'de DURUM PASIF kalır,
-modül ATLANIR ve "GECTI" kaydı atılmaz.
+USER.8 - USER.10 (add-user) yazılmadığı sürece modül EKSİKTİR: T2'de DURUM PASIF kalır ve
+"GECTI" kaydı ATILMAZ.
 
-Modül tamamlandığında main2_instructions.txt T2'ye dön. T3 kaydını
-(2 user_instructions.txt GECTI ...) orada at ve sıradaki modüle
-(contact_type_instructions.txt) geç.
+YARIM MODÜLÜN T3 KAYDI: A bölümü tek başına koşulduysa (ön koşulu sadece modül 1'dir) sonuç
+kaybolmasın diye T3 satırı ne geçtiğini ve neyin atlandığını birlikte yazar. 2 Ağustos 2026
+koşumunda kullanılan ve bundan sonra da kullanılacak biçim:
+  2 user_instructions.txt A_BOLUMU_GECTI(USER.1-USER.7)_B_BOLUMU_ATLANDI(USER.8-USER.17_YAZILMADI) <tarih>
+Bu satır "modül GECTI" DEĞİLDİR; T4'teki toplu sayılar da yarım modüle göre düşer (A bölümü
+tek başına koştuysa user_himself_activities 3 değil 2 satırdır).
+
+Modül tamamlandığında (USER.8-USER.10 yazılıp USER.1-USER.17'nin tamamı geçtiğinde)
+main2_instructions.txt T2'ye dön. T3 kaydını (2 user_instructions.txt GECTI ...) orada at
+ve sıradaki modüle (contact_type_instructions.txt) geç.
 
 
 ======================================================================================
@@ -771,8 +781,14 @@ Modül tamamlandığında main2_instructions.txt T2'ye dön. T3 kaydını
  src/test/resources/schema.sql (users, user_himself_activities sütunları),
  src/test/resources/first_user.sql (admin'in başlangıç şifresi).
 
- 1 Ağustos 2026: Adımlar KAYNAK KODDAN çıkarıldı; login_instructions.txt'ten farklı olarak
- henüz canlı uygulamada koşturulmadı (yazıldığı ortamda docker/veritabanı yoktu). Bu yüzden
- "ÖLÇÜLDÜ" ibaresi kullanılmadı. İlk gerçek koşumda teyit edilip bu dosyaya ölçülmüş değer
- olarak yazılacak tek belirsizlik USER.6/USER.16'daki HTTP kodudur (403 mü 401 mi).
+ 1 Ağustos 2026: Adımlar KAYNAK KODDAN çıkarıldı; yazıldığı ortamda docker/veritabanı
+ olmadığı için ilk yazımda hiçbir yerde "ÖLÇÜLDÜ" ibaresi kullanılmadı.
+
+ 2 Ağustos 2026: A bölümü (USER.1-USER.7) canlı uygulamada koşuldu ve GEÇTİ; koşum sırasında
+ çalıştırılan komutlar tek tek izlendi. Açık olan tek belirsizlik böylece kapandı: USER.6'da
+ token'sız istek 403 döndürdü ve gövde boştu, yani Http403ForbiddenEntryPoint çıkarımı
+ doğrulandı. USER.6 ölçülmüş değere göre sabitlendi, USER.16 da ona bağlandı.
+ B bölümü (USER.11-USER.17) HÂLÂ KOŞULMADI: ön koşulu olan USER.8-USER.10 (add-user) henüz
+ yazılmadığı için koşulamaz. Oradaki beklentiler hâlâ kaynak koddan çıkarılmıştır; ilk
+ koşumda teyit edilmeleri gerekir.
 ======================================================================================
