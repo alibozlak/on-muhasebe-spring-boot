@@ -214,18 +214,23 @@ LOG SATIRI DOĞRU KULLANICIYA BAĞLI MI (FK olmadığı için ELLE kontrol):
 GERÇEKTEN karşılığı olduğunu ve şifresi değişen kişi olduğunu KANITLAMAZ. Veritabanında
 foreign key constraint olmadığı için user_himself_activities.user_id olmayan bir kullanıcıyı
 da gösterebilir ve DB bunu reddetmez (bkz. README.md). O yüzden iki tabloyu JOIN'leyip
-soruyoruz:
-  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT a.user_himself_activity_id, a.user_id, u.user_id, u.username, u.is_admin, md5(u.hashed_password) FROM user_himself_activities a JOIN users u ON u.user_id = a.user_id;"'
-BEKLENEN: tek satır ->  1|1|1|bozlak|t|<MD5_ADMIN_YENI>
-  a.user_id = u.user_id : JOIN satır ürettiyse log satırının işaret ettiği kullanıcı
-                          GERÇEKTEN vardır. HİÇ SATIR GELMEZSE karşılıksız (orphan) kayıt
-                          yazılmıştır -> [ON_ERROR]. Constraint olmadığı için bunu yakalayan
-                          tek yer bu adımdır.
-  username=bozlak       : log satırı, şifresi değişen kullanıcının kendisine aittir.
-  md5 = <MD5_ADMIN_YENI>: JOIN ile gelen satırın hash'i, bu adımda değişmiş olan hash'tir.
-                          Yani "log satırındaki user_id" ile "şifresi değişen users satırı"
-                          aynı satırdır — ayrı ayrı doğru görünüp birbirini tutmayan iki
-                          kayıt olma ihtimali burada kapanır.
+SAYDIRIYORUZ. Kriter satırı göz kararı okumak değil, üç sayının da beklenen değeri
+vermesidir:
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT (SELECT count(*) FROM user_himself_activities), (SELECT count(*) FROM user_himself_activities a JOIN users u ON u.user_id = a.user_id), (SELECT count(*) FROM user_himself_activities a JOIN users u ON u.user_id = a.user_id WHERE u.username = '\''bozlak'\'' AND u.is_admin = true AND md5(u.hashed_password) = '\''<MD5_ADMIN_YENI>'\'');"'
+BEKLENEN: 1|1|1
+  1. sayı : toplam log satırı.
+  2. sayı : users tablosunda KARŞILIĞI OLAN log satırı. 1. sayıdan küçükse aradaki fark
+            karşılıksız (orphan) kayıttır -> [ON_ERROR]. Constraint olmadığı için bunu
+            yakalayan tek yer burasıdır.
+  3. sayı : log satırının bağlandığı users satırı gerçekten bozlak mı, admin mi ve hash'i
+            BU ADIMDA değişen satır mı. 0 çıkarsa log satırı ya başka kullanıcıya ya da
+            şifresi değişenden başka bir users satırına bağlıdır -> [ON_ERROR].
+  Üçünün de 1 olması, "şifresi değişen users satırı" ile "log satırının gösterdiği users
+  satırı"nın AYNI satır olduğunu kanıtlar; ayrı ayrı doğru görünüp birbirini tutmayan iki
+  kayıt ihtimali burada kapanır.
+  DİKKAT: <MD5_ADMIN_YENI> bir yer tutucudur; sorguyu çalıştırmadan önce bu adımda not
+  aldığın 32 haneli md5 ile DEĞİŞTİR. Değiştirmeyi unutursan 3. sayı 0 gelir ve bu SAHTE
+  bir hatadır.
 
 İŞLEM YAPAN KULLANICI ZİNCİRİ (üç değer de aynı olmalı):
   (1) token'daki userId claim'i        : USER.1'de okundu -> 1
@@ -426,17 +431,17 @@ BEKLENEN: iki satır, ikisi de user_id=1 ve USER_CHANGED_PASSWORD:
   2 | 1 | USER_CHANGED_PASSWORD | BUGÜN
   İkinci satır yoksa geri alma loglanmamıştır -> [ON_ERROR].
 
-LOG SATIRLARI DOĞRU KULLANICIYA BAĞLI MI (USER.2'deki JOIN, iki satır için):
-  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT a.user_himself_activity_id, a.user_id, u.username, u.is_admin, md5(u.hashed_password) FROM user_himself_activities a JOIN users u ON u.user_id = a.user_id ORDER BY a.user_himself_activity_id;"'
-BEKLENEN: iki satır ->
-  1|1|bozlak|t|<MD5_ADMIN_GERI>
-  2|1|bozlak|t|<MD5_ADMIN_GERI>
-  İki satır da bozlak'a bağlanmalı; JOIN'den iki satırdan AZ gelirse en az bir log kaydı
-  users'ta karşılıksızdır -> [ON_ERROR] (FK olmadığı için DB bunu reddetmemiştir).
-  md5 sütunu ikisinde de AYNI ve <MD5_ADMIN_GERI>'dir: hash users tablosundan okunur, log
-  satırından değil; iki log satırı da aynı kullanıcının GÜNCEL satırını gösterir.
-  İşlem yapan kullanıcı zinciri USER.2'deki gibi kontrol edilir: token userId=1, şifresi
-  değişen satır user_id=1, log satırları user_id=1.
+LOG SATIRLARI DOĞRU KULLANICIYA BAĞLI MI (USER.2'deki sayım, iki satır için):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT (SELECT count(*) FROM user_himself_activities), (SELECT count(*) FROM user_himself_activities a JOIN users u ON u.user_id = a.user_id), (SELECT count(*) FROM user_himself_activities a JOIN users u ON u.user_id = a.user_id WHERE u.username = '\''bozlak'\'' AND u.is_admin = true AND md5(u.hashed_password) = '\''<MD5_ADMIN_GERI>'\'');"'
+BEKLENEN: 2|2|2
+  Üç sayı da 2 olmalı: iki log satırı var, ikisinin de users'ta karşılığı var ve ikisi de
+  bozlak'ın GÜNCEL satırına (geri alınmış hash) bağlı. 2. sayı 2'den küçükse karşılıksız
+  kayıt vardır; 3. sayı küçükse log satırı yanlış kullanıcıya bağlıdır -> [ON_ERROR].
+  <MD5_ADMIN_GERI> yer tutucudur, bu adımda not aldığın md5 ile değiştir.
+  Hash users tablosundan okunur, log satırından değil; iki log satırı da aynı kullanıcının
+  tek ve güncel users satırını gösterdiği için ikisi de aynı md5'i verir.
+  İşlem yapan kullanıcı zinciri USER.2'deki gibidir: token userId=1, şifresi değişen satır
+  user_id=1, log satırları user_id=1.
 
 FONKSİYONEL DOĞRULAMA (sabit veri gerçekten geri geldi mi):
   wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/login_admin.json -w "HTTP:%{http_code}\n" -X POST http://localhost:8080/api/login -H "Content-Type: application/json" -d "{\"username\":\"bozlak\",\"password\":\"bozlak\"}"; echo "--- body ---"; cat target/login_admin.json; echo'
@@ -541,21 +546,21 @@ BEKLENEN: üç satır ->
   wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT count(*) FROM user_himself_activities WHERE user_id = 2 AND activity_type_name = '\''USER_CHANGED_PASSWORD'\'' AND created_at = CURRENT_DATE;"'
   BEKLENEN: 1
 
-LOG SATIRI DOĞRU KULLANICIYA BAĞLI MI (USER.2'deki JOIN, üç satır için):
-  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT a.user_himself_activity_id, a.user_id, u.username, u.is_admin, md5(u.hashed_password) FROM user_himself_activities a JOIN users u ON u.user_id = a.user_id ORDER BY a.user_himself_activity_id;"'
-BEKLENEN: üç satır ->
-  1|1|bozlak|t|<MD5_ADMIN_GERI>
-  2|1|bozlak|t|<MD5_ADMIN_GERI>
-  3|2|testuser1|f|<MD5_USER_YENI>
-  Üçüncü satır bu adımın kaydıdır ve asıl kontrol odur:
-    - u.username=testuser1 : log, admin'e değil işlemi yapan kullanıcıya yazılmıştır.
-    - u.is_admin=f         : kayıt admin olmayan kullanıcıya ait; f yerine t görürsen log
-                             yanlış satıra bağlanmıştır -> [ON_ERROR].
-    - md5=<MD5_USER_YENI>  : log satırındaki user_id ile bu adımda şifresi değişen users
-                             satırı AYNI satırdır (USER.12 başındaki hash kontrolüyle
-                             birebir aynı değer).
-  JOIN'den üç satırdan AZ gelirse en az bir log kaydı users'ta karşılıksızdır -> [ON_ERROR];
-  FK constraint olmadığı için veritabanı bunu kendiliğinden reddetmez.
+LOG SATIRI DOĞRU KULLANICIYA BAĞLI MI (USER.2'deki sayım, bu adımın satırı için):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT (SELECT count(*) FROM user_himself_activities), (SELECT count(*) FROM user_himself_activities a JOIN users u ON u.user_id = a.user_id), (SELECT count(*) FROM user_himself_activities a JOIN users u ON u.user_id = a.user_id WHERE a.user_id = 2 AND u.username = '\''testuser1'\'' AND u.is_admin = false AND md5(u.hashed_password) = '\''<MD5_USER_YENI>'\'');"'
+BEKLENEN: 3|3|1
+  1. ve 2. sayı : üç log satırının ÜÇÜNÜN de users'ta karşılığı var. 2. sayı 3'ten küçükse
+                  karşılıksız kayıt vardır -> [ON_ERROR].
+  3. sayı       : bu adımın yazdığı satır. 1 olmalı ve şunları birlikte kanıtlar:
+                    - log satırı user_id=2'ye, yani işlemi yapan kullanıcıya bağlı
+                      (admin'e değil),
+                    - bağlandığı users satırı testuser1 ve is_admin=false,
+                    - o satırın hash'i BU ADIMDA değişen hash (<MD5_USER_YENI> yer
+                      tutucudur, not aldığın md5 ile değiştir).
+                  0 çıkarsa log yanlış kullanıcıya yazılmış ya da şifresi değişenden başka
+                  bir users satırına bağlanmıştır -> [ON_ERROR], bana ayrıca haber ver.
+  A bölümünün iki satırı bu sayımda 3. değere GİRMEZ (onlar user_id=1'dir); bu yüzden
+  beklenen değer 3 değil 1'dir.
 
 İŞLEM YAPAN KULLANICI ZİNCİRİ (bu adım için):
   (1) token'daki userId claim'i    : USER.11'de okundu -> 2
