@@ -209,6 +209,33 @@ BEKLENEN: tek satır -> user_himself_activity_id=1, user_id=1,
   wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT count(*) FROM user_himself_activities WHERE user_id = 1 AND activity_type_name = '\''USER_CHANGED_PASSWORD'\'' AND created_at = CURRENT_DATE;"'
   BEKLENEN: 1     (tırnak kuralı için main2 [KALIP-5]'e bak: '\'' kullanılır, '' değil)
 
+LOG SATIRI DOĞRU KULLANICIYA BAĞLI MI (FK olmadığı için ELLE kontrol):
+Üstteki sorgu log satırında "user_id=1 yazıyor mu" der; bu, o değerin users tablosunda
+GERÇEKTEN karşılığı olduğunu ve şifresi değişen kişi olduğunu KANITLAMAZ. Veritabanında
+foreign key constraint olmadığı için user_himself_activities.user_id olmayan bir kullanıcıyı
+da gösterebilir ve DB bunu reddetmez (bkz. README.md). O yüzden iki tabloyu JOIN'leyip
+soruyoruz:
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT a.user_himself_activity_id, a.user_id, u.user_id, u.username, u.is_admin, md5(u.hashed_password) FROM user_himself_activities a JOIN users u ON u.user_id = a.user_id;"'
+BEKLENEN: tek satır ->  1|1|1|bozlak|t|<MD5_ADMIN_YENI>
+  a.user_id = u.user_id : JOIN satır ürettiyse log satırının işaret ettiği kullanıcı
+                          GERÇEKTEN vardır. HİÇ SATIR GELMEZSE karşılıksız (orphan) kayıt
+                          yazılmıştır -> [ON_ERROR]. Constraint olmadığı için bunu yakalayan
+                          tek yer bu adımdır.
+  username=bozlak       : log satırı, şifresi değişen kullanıcının kendisine aittir.
+  md5 = <MD5_ADMIN_YENI>: JOIN ile gelen satırın hash'i, bu adımda değişmiş olan hash'tir.
+                          Yani "log satırındaki user_id" ile "şifresi değişen users satırı"
+                          aynı satırdır — ayrı ayrı doğru görünüp birbirini tutmayan iki
+                          kayıt olma ihtimali burada kapanır.
+
+İŞLEM YAPAN KULLANICI ZİNCİRİ (üç değer de aynı olmalı):
+  (1) token'daki userId claim'i        : USER.1'de okundu -> 1
+  (2) şifresi değişen users satırı     : bu adımda md5'i değişen satır -> user_id=1
+  (3) log satırındaki user_id          : üstteki JOIN -> 1
+Endpoint işlemi yapan kullanıcıyı YALNIZCA token'daki userId claim'inden alır
+(UserController.changePassword -> @RequestAttribute("userId")); istek gövdesinde kullanıcı
+bilgisi taşınmaz. Üç değerden biri farklıysa işlem başka bir kullanıcı adına yapılmış ya da
+log başka bir kullanıcıya yazılmış demektir -> [ON_ERROR], bana ayrıca haber ver.
+
 DB DOĞRULAMA (yan etki yok):
   wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT (SELECT count(*) FROM users), (SELECT count(*) FROM admins), (SELECT count(*) FROM user_himself_activities), (SELECT count(*) FROM admin_activities_about_user);"'
 BEKLENEN: 1|1|1|0
@@ -399,6 +426,18 @@ BEKLENEN: iki satır, ikisi de user_id=1 ve USER_CHANGED_PASSWORD:
   2 | 1 | USER_CHANGED_PASSWORD | BUGÜN
   İkinci satır yoksa geri alma loglanmamıştır -> [ON_ERROR].
 
+LOG SATIRLARI DOĞRU KULLANICIYA BAĞLI MI (USER.2'deki JOIN, iki satır için):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT a.user_himself_activity_id, a.user_id, u.username, u.is_admin, md5(u.hashed_password) FROM user_himself_activities a JOIN users u ON u.user_id = a.user_id ORDER BY a.user_himself_activity_id;"'
+BEKLENEN: iki satır ->
+  1|1|bozlak|t|<MD5_ADMIN_GERI>
+  2|1|bozlak|t|<MD5_ADMIN_GERI>
+  İki satır da bozlak'a bağlanmalı; JOIN'den iki satırdan AZ gelirse en az bir log kaydı
+  users'ta karşılıksızdır -> [ON_ERROR] (FK olmadığı için DB bunu reddetmemiştir).
+  md5 sütunu ikisinde de AYNI ve <MD5_ADMIN_GERI>'dir: hash users tablosundan okunur, log
+  satırından değil; iki log satırı da aynı kullanıcının GÜNCEL satırını gösterir.
+  İşlem yapan kullanıcı zinciri USER.2'deki gibi kontrol edilir: token userId=1, şifresi
+  değişen satır user_id=1, log satırları user_id=1.
+
 FONKSİYONEL DOĞRULAMA (sabit veri gerçekten geri geldi mi):
   wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o target/login_admin.json -w "HTTP:%{http_code}\n" -X POST http://localhost:8080/api/login -H "Content-Type: application/json" -d "{\"username\":\"bozlak\",\"password\":\"bozlak\"}"; echo "--- body ---"; cat target/login_admin.json; echo'
 BEKLENEN: HTTP:200, "success":true ve "object" içinde "jwtToken".
@@ -501,6 +540,28 @@ BEKLENEN: üç satır ->
   Tarih kontrolünü veritabanına sordur:
   wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT count(*) FROM user_himself_activities WHERE user_id = 2 AND activity_type_name = '\''USER_CHANGED_PASSWORD'\'' AND created_at = CURRENT_DATE;"'
   BEKLENEN: 1
+
+LOG SATIRI DOĞRU KULLANICIYA BAĞLI MI (USER.2'deki JOIN, üç satır için):
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT a.user_himself_activity_id, a.user_id, u.username, u.is_admin, md5(u.hashed_password) FROM user_himself_activities a JOIN users u ON u.user_id = a.user_id ORDER BY a.user_himself_activity_id;"'
+BEKLENEN: üç satır ->
+  1|1|bozlak|t|<MD5_ADMIN_GERI>
+  2|1|bozlak|t|<MD5_ADMIN_GERI>
+  3|2|testuser1|f|<MD5_USER_YENI>
+  Üçüncü satır bu adımın kaydıdır ve asıl kontrol odur:
+    - u.username=testuser1 : log, admin'e değil işlemi yapan kullanıcıya yazılmıştır.
+    - u.is_admin=f         : kayıt admin olmayan kullanıcıya ait; f yerine t görürsen log
+                             yanlış satıra bağlanmıştır -> [ON_ERROR].
+    - md5=<MD5_USER_YENI>  : log satırındaki user_id ile bu adımda şifresi değişen users
+                             satırı AYNI satırdır (USER.12 başındaki hash kontrolüyle
+                             birebir aynı değer).
+  JOIN'den üç satırdan AZ gelirse en az bir log kaydı users'ta karşılıksızdır -> [ON_ERROR];
+  FK constraint olmadığı için veritabanı bunu kendiliğinden reddetmez.
+
+İŞLEM YAPAN KULLANICI ZİNCİRİ (bu adım için):
+  (1) token'daki userId claim'i    : USER.11'de okundu -> 2
+  (2) şifresi değişen users satırı : bu adımda md5'i değişen satır -> user_id=2
+  (3) log satırındaki user_id      : üstteki JOIN'in üçüncü satırı -> 2
+Üçü de 2 değilse -> [ON_ERROR], bana ayrıca haber ver.
 
 DB DOĞRULAMA (yan etki yok):
   wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT (SELECT count(*) FROM users), (SELECT count(*) FROM admins), (SELECT count(*) FROM user_himself_activities), (SELECT count(*) FROM admin_activities_about_user);"'
@@ -630,6 +691,20 @@ BEKLENEN: 2|1|0|0|0|0|3|1
   user_self=3  : A bölümünden 2 (user_id=1), B bölümünden 1 (user_id=2)
   adm_user=1   : USER.8'in ürettiği add-user kaydı
   Diğer iş tabloları boş; onları modül 3-6 dolduracak.
+
+KOMUT (KARŞILIKSIZ SATIR TARAMASI — bu modülün dokunduğu bütün bağlar):
+FK constraint olmadığı için (bkz. README.md) bu modülün yazdığı hiçbir satırın bağı
+veritabanı tarafından denetlenmedi. Modül sonunda hepsini birden tarıyoruz: her sorgu,
+karşılığı OLMAYAN satırları sayar.
+  wsl -e bash -lc 'docker exec pre_accounting_db psql -U bozlak -d test_db -tAc "SELECT (SELECT count(*) FROM user_himself_activities a LEFT JOIN users u ON u.user_id = a.user_id WHERE u.user_id IS NULL), (SELECT count(*) FROM admin_activities_about_user aa LEFT JOIN users u ON u.user_id = aa.user_id WHERE u.user_id IS NULL), (SELECT count(*) FROM admin_activities_about_user aa LEFT JOIN admins ad ON ad.admin_id = aa.admin_id WHERE ad.admin_id IS NULL), (SELECT count(*) FROM admins ad LEFT JOIN users u ON u.user_id = ad.user_id WHERE u.user_id IS NULL);"'
+BEKLENEN: 0|0|0|0
+  1. user_himself_activities.user_id -> users.user_id   (bu modülün 3 log satırı)
+  2. admin_activities_about_user.user_id -> users.user_id  (USER.8'in kaydı: yaratılan user)
+  3. admin_activities_about_user.admin_id -> admins.admin_id (USER.8'in kaydı: yapan admin)
+  4. admins.user_id -> users.user_id                     (Adım 4'ten gelen admin satırı)
+Herhangi biri 0'dan büyükse o tabloda "olmayan bir id'yi gösteren" satır vardır -> [ON_ERROR].
+Bu, HTTP koduna VE tek tablo sorgusuna bakınca görünmeyen üçüncü tür hatadır: satır oluşur,
+alanlar dolu görünür, ama işaret ettiği kayıt yoktur.
 
 KOMUT (sabit test verileri modülden sağ çıktı mı):
   wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && curl -s -o /dev/null -w "admin_login:%{http_code}\n" -X POST http://localhost:8080/api/login -H "Content-Type: application/json" -d "{\"username\":\"bozlak\",\"password\":\"bozlak\"}"'
