@@ -93,9 +93,10 @@ Container zaten varsa (önceki koşudan kalmış):
   wsl -e bash -lc 'docker rm -f pre_accounting_db && docker ps -a --filter name=pre_accounting_db'
 Bu şart önemli: Adım 4'teki SQL'ler user_id=1 / admin_id=1 varsayıyor. Eski veri kalırsa
 IDENTITY sayacı 1'den başlamaz ve admins.user_id yanlış bir users satırını gösterir.
-Bu artık GÜRÜLTÜSÜZ bozulur: Adım 3b'nin şeması foreign key TANIMLAMAZ (testlerin yazdığı
-karşılıksız satırlarla uyumlu olsun diye), yani hata almazsın, sessizce tutarsız veri
-üretirsin. Container'ı silmek bu yüzden şart.
+Bu GÜRÜLTÜSÜZ bozulur: ne Adım 3b'nin şeması ne de üretim veritabanı foreign key TANIMLAR
+(proje kararı; bkz. README.md), yani RDBMS karşılıksız satırı reddetmez. Hata almazsın,
+sessizce tutarsız veri üretirsin. Bağların doğruluğunu yalnızca uygulama ve bu pipeline'ın
+DB doğrulama adımları kontrol eder. Container'ı silmek bu yüzden şart.
 
 
 -------------------------------------------------------------------------------
@@ -203,7 +204,14 @@ Buraya sadece Adım 1-5'in tamamı "Beklenen" sonucu verdiyse gelinir. "Testler 
 diye varsayma; geçme kriteri main2_instructions.txt'te tanımlı olan kriterdir.
 
 6a. Rapor dosyasını yaz (pom.xml ile aynı dizine, yani PROJE_WSL köküne):
-  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && { echo "SONUC: BASARILI"; echo "TARIH: $(date -Iseconds)"; echo "----- docker ps -a -----"; docker ps -a; echo "----- run.log (Maven + Spring tum loglar) -----"; cat target/run.log; } > infos.txt && ls -l infos.txt'
+  wsl -e bash -lc 'cd /mnt/c/angularAndJava/on_muhasebe/on-muhasebe-spring-boot && { echo "SONUC: BASARILI"; echo "TARIH: $(date -Iseconds)"; echo "----- test_results.txt (modul bazli ozet) -----"; cat target/test_results.txt; echo "----- docker ps -a -----"; docker ps -a; echo "----- run.log (Maven + Spring tum loglar) -----"; cat target/run.log; } > infos.txt && ls -l infos.txt'
+
+test_results.txt bölümü komutun parçasıdır, sonradan eklenecek bir şey değildir:
+main2_instructions.txt T5, "infos.txt yazılırken target/test_results.txt içeriğinin de
+rapora girdiğinden emin ol" der. Bu satır komutta yokken iki talimat çakışıyordu ve
+çalıştıran taraf komutu kendi kafasına göre genişletmek zorunda kalıyordu — TEMEL KURALLAR
+ise komutların birebir uygulanmasını söyler. Çakışma komutun içine alınarak kapatıldı.
+(2 Ağustos 2026 koşumunda bu çakışma bizzat yaşandı ve T5 lehine çözüldü.)
 
 6b. [CLEANUP] bloğunu uygula.
 

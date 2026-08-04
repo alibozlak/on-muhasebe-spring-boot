@@ -48,3 +48,5 @@ db_pre-accounting/
 errors.txt
 infos.txt
 
+### Python3 Tools for Bash Scipting ###
+*.whl
