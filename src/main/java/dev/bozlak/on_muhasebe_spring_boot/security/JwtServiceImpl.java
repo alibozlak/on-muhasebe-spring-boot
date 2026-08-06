@@ -25,7 +25,7 @@ import java.util.Map;
 @Service
 public class JwtServiceImpl implements JwtService {
 
-    private static final Duration TOKEN_VALIDITY = Duration.ofDays(30);
+    private static final Duration TOKEN_VALIDITY = Duration.ofHours(8);
 
     private final JwtEncoder jwtEncoder;
     private final JwtDecoder jwtDecoder;
