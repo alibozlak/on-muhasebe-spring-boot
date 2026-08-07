@@ -50,3 +50,6 @@ infos.txt
 
 ### Python3 Tools for Bash Scipting ###
 *.whl
+
+### Java .class file or files for Test Pipeline ###
+*.class
