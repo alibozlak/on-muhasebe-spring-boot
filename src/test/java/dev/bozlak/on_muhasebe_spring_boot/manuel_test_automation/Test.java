@@ -1,3 +1,5 @@
+package dev.bozlak.on_muhasebe_spring_boot.manuel_test_automation;
+
 import java.lang.ProcessBuilder;
 
 /**
@@ -17,13 +19,13 @@ public class Test {
     static final ProcessBuilder processBuilder = new ProcessBuilder("bash", "-c", "");
 
     public static void main(String[] args) throws Exception {
-        System.out.println("\n--- Test.java Current Working Directory ---");
-        String output = bash("pwd && echo \"\"");
-        System.out.println(output);
 
         // Create tables and insert first user and admin to Postgres docker container :
         String startTestShOutput = bash("bash start_test.sh");
         System.out.println(startTestShOutput);
+
+        if (!new AdminLoginOperations().doOperations())
+            return;
 
         // Pipeline finish message :
         String finishMessage = String.format(
