@@ -48,22 +48,3 @@ docker exec -i pre_accounting_db psql -U bozlak -d test_db -v ON_ERROR_STOP=1 < 
 docker exec pre_accounting_db psql -U bozlak -d test_db -c "select * from admins;"
 echo -e "$INFO_MESSAGE ${SUCCESS_COLOR}First admin = First user (bozlak) created${NO_COLOR}"
 echo ""
-
-
-#echo -e "$INFO_MESSAGE Login Trial Admin Previous Password : "
-#curl -X POST http://localhost:8080/api/login -H "Content-Type: application/json" -d "{\"username\" : \"bozlak\", \"password\" : \"bozlak\"}" > src/test/resources/test_responses/login_previous_password.json
-#echo -e "$INFO_MESSAGE Response : $(cat src/test/resources/test_responses/login_previous_password.json)"
-#echo -e "$INFO_MESSAGE ${SUCCESS_COLOR}Login trial with previous admin password rejected${NO_COLOR}"
-#echo ""
-#
-#echo -e "$INFO_MESSAGE Login Trial with correct (new) admin password : "
-#curl -X POST http://localhost:8080/api/login -H "Content-Type: application/json" -d "{\"username\" : \"bozlak\", \"password\" : \"Test5678!\"}" > src/test/resources/test_responses/login_new_password.json
-#echo -e "$INFO_MESSAGE Response : $(cat src/test/resources/test_responses/login_new_password.json)"
-#echo -e "$INFO_MESSAGE ${SUCCESS_COLOR}Login trial with new (correct) admin password accepted${NO_COLOR}"
-#echo ""
-#
-#echo -e "$INFO_MESSAGE ${SUCCESS_COLOR}(2) Admin change password succeed :)${NO_COLOR}"
-#token=$(jq -r '.object.jwtToken' src/test/resources/test_responses/login_new_password.json)
-#curl -X PUT "http://localhost:8080/api/v1/users/change-password" -H "Authorization: Bearer $token" -H "Content-Type: application/json" -d "{\"currentPassword\":\"Test5678!\",\"newPassword\":\"bozlak\"}" > src/test/resources/test_responses/admin_change_password_response.json
-#echo -e "$INFO_MESSAGE ${SUCCESS_COLOR}Returned previous password : bozlak${NO_COLOR}"
-

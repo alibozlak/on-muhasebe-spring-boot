@@ -12,6 +12,7 @@ public class TestUtil {
     static final ProcessBuilder processBuilder = new ProcessBuilder("bash", "-c", "");
 
     static String adminBozlakJwtToken = "";
+    static String adminBozlakPassword = "bozlak";
 
     static String bash(String bashCommand) throws Exception {
         processBuilder.command("bash", "-c", bashCommand);
@@ -28,24 +29,27 @@ public class TestUtil {
         System.out.println(logMessage);
     }
 
+    static void printSuccessMessageToTerminal(String message) throws Exception {
+        String logMessage = bash(String.format(
+                "echo -e \"%s%s %s%s\"", INFO_MESSAGE, SUCCESS_COLOR, message, NO_COLOR
+        ));
+        System.out.println(logMessage);
+    }
+
     static boolean printSuccessOrErrorMessageToTerminal(
-            Condition condition, String successMessage, Runnable runnable, String errorMessage
+            Condition condition, String successMessage, RunnableCanThrowException runnable, String errorMessage
     ) throws Exception
     {
-        String logMessage = bash(String.format(
-                "echo -e \"%s%s %s%s\"", ERROR_MESSAGE, ERROR_COLOR, errorMessage, NO_COLOR
-        ));
-
         if (condition.doOperation()){
             runnable.run();
 
-            logMessage = bash(String.format(
-                    "echo -e \"%s%s %s%s\"", INFO_MESSAGE, SUCCESS_COLOR, successMessage, NO_COLOR
-            ));
-            System.out.println(logMessage);
+            printSuccessMessageToTerminal(successMessage);
             return true;
         }
 
+        String logMessage = bash(String.format(
+                "echo -e \"%s%s %s%s\"", ERROR_MESSAGE, ERROR_COLOR, errorMessage, NO_COLOR
+        ));
         System.out.println(logMessage);
         return false;
     }

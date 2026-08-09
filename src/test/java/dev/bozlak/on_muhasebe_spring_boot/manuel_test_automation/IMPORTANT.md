@@ -1,0 +1,1 @@
+- This automation test **ASSUMES** project is running !!
